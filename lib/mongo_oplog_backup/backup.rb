@@ -11,15 +11,17 @@ module MongoOplogBackup
 
     def backup_oplog(options={})
       start_at = options[:start]
+      backup = options[:backup]
+
       if start_at
         query = "--query \"{ts : { \\$gte : { \\$timestamp : { t : #{start_at.seconds}, i : #{start_at.increment} } } }}\""
       else
         query = ""
       end
-      config.mongodump("--out backup-tmp --db local --collection oplog.rs #{query}")
+      config.mongodump("--out #{config.oplog_dump_folder} --db local --collection oplog.rs #{query}")
 
       timestamps = []
-      Oplog.each_document('backup-tmp/local/oplog.rs.bson') do |doc|
+      Oplog.each_document(config.oplog_dump) do |doc|
         timestamps << doc['ts']
       end
 
@@ -41,17 +43,17 @@ module MongoOplogBackup
       }
 
       if timestamps.count == 1
-        puts config.exec("rm backup-tmp/local/oplog.rs.bson")
         result[:empty] = true
-        return result
       else
-        outfile = "oplog-#{first.seconds}:#{first.increment}-#{last.seconds}:#{last.increment}.bson"
-        puts config.exec("mv backup-tmp/local/oplog.rs.bson #{outfile}")
+        outfile = "oplog-#{first}-#{last}.bson"
+        puts config.exec("mv #{config.oplog_dump} #{File.join(config.backup_dir, backup, outfile)}")
 
         result[:file] = outfile
         result[:empty] = false
-        return result
       end
+
+      puts config.exec("rm -r #{config.oplog_dump_folder}")
+      result
     end
 
     def latest_oplog_timestamp_moped
@@ -76,16 +78,22 @@ module MongoOplogBackup
 
     def backup_full
       position = latest_oplog_timestamp
-      config.mongodump('--out backup-full')
+      raise "Cannot backup with empty oplog" if position.nil?
+      position = BSON::Timestamp.from_json(position)
+      backup_name = "backup-#{position}"
+      dump_folder = File.join(config.backup_dir, backup_name, 'dump')
+      config.mongodump("--out #{dump_folder}")
       return {
-        position: position
+        position: position,
+        backup: backup_name
       }
     end
 
     def perform(mode='auto')
-      state_file = 'state.json'
+      state_file = config.state_file
       state = JSON.parse(File.read(state_file)) rescue nil
-      have_position = (state && state['position'])
+      state ||= {}
+      have_position = (state['position'] && state['backup'])
 
       if mode == 'auto'
         if have_position
@@ -101,13 +109,11 @@ module MongoOplogBackup
 
       if mode == 'oplog'
         puts "Performing incremental oplog backup"
-        position = BSON::Timestamp.new(state['position']['t'], state['position']['i'])
-        result = backup_oplog(start: position)
+        position = BSON::Timestamp.from_json(state['position'])
+        result = backup_oplog(start: position, backup: state['backup'])
         unless result[:empty]
           new_entries = result[:entries] - 1
-          state = {
-            'position' => result[:position]
-          }
+          state['position'] = result[:position]
           File.write(state_file, state.to_json)
           puts
           puts "Backed up #{new_entries} new entries"
@@ -117,9 +123,7 @@ module MongoOplogBackup
       elsif mode == 'full'
         puts "Performing full backup"
         result = backup_full
-        state = {
-          'position' => result[:position]
-        }
+        stae = result
         File.write(state_file, state.to_json)
         puts
         puts "Performed full backup"

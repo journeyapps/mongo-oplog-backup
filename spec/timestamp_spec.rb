@@ -21,4 +21,10 @@ describe MongoOplogBackup::Ext::Timestamp do
     ts.increment.should == 20
     ts.as_json.should == json
   end
+
+  it 'should define to_s' do
+    ts = BSON::Timestamp.new(1408004593, 2)
+    ts.to_s.should == '1408004593:2'
+    "#{ts}".should == '1408004593:2'
+  end
 end

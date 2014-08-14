@@ -7,6 +7,10 @@ module MongoOplogBackup::Ext
       [seconds, increment] <=> [other.seconds, other.increment]
     end
 
+    def to_s
+      "#{seconds}:#{increment}"
+    end
+
     module ClassMethods
       # Accepts {'t' => seconds, 'i' => increment}
       def from_json(data)

@@ -1,7 +1,29 @@
 module MongoOplogBackup
   class Config
+    attr_reader :options
+
+    def initialize(options)
+      @options = options
+    end
+
+    def backup_dir
+      options[:dir]
+    end
+
     def command_line_options
       ''
+    end
+
+    def oplog_dump_folder
+      File.join(backup_dir, 'dump')
+    end
+
+    def oplog_dump
+      File.join(oplog_dump_folder, 'local/oplog.rs.bson')
+    end
+
+    def state_file
+      File.join(backup_dir, 'backup.json')
     end
 
     def exec(cmd)
