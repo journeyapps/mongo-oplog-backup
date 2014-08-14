@@ -1,0 +1,3 @@
+#!/usr/bin/env ruby
+
+require 'mongo_oplog_backup'
