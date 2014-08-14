@@ -1,3 +1,6 @@
+require 'json'
+require 'mongo_oplog_backup/oplog'
+
 module MongoOplogBackup
   class Backup
     attr_reader :config
@@ -16,7 +19,7 @@ module MongoOplogBackup
       config.mongodump("--out backup-tmp --db local --collection oplog.rs #{query}")
 
       timestamps = []
-      each_document('backup-tmp/local/oplog.rs.bson') do |doc|
+      Oplog.each_document('backup-tmp/local/oplog.rs.bson') do |doc|
         timestamps << doc['ts']
       end
 
@@ -79,11 +82,24 @@ module MongoOplogBackup
       }
     end
 
-    def backup_next
+    def perform(mode='auto')
       state_file = 'state.json'
       state = JSON.parse(File.read(state_file)) rescue nil
+      have_position = (state && state['position'])
 
-      if state && state['position']
+      if mode == 'auto'
+        if have_position
+          mode = 'oplog'
+        else
+          mode = 'full'
+        end
+      end
+
+      if mode == 'oplog' && !have_position
+        raise "Unknown backup position - cannot perform oplog backup."
+      end
+
+      if mode == 'oplog'
         puts "Performing incremental oplog backup"
         position = BSON::Timestamp.new(state['position']['t'], state['position']['i'])
         result = backup_oplog(start: position)
@@ -98,7 +114,7 @@ module MongoOplogBackup
         else
           puts "Nothing new to backup"
         end
-      else
+      elsif mode == 'full'
         puts "Performing full backup"
         result = backup_full
         state = {
@@ -107,7 +123,9 @@ module MongoOplogBackup
         File.write(state_file, state.to_json)
         puts
         puts "Performed full backup"
-        backup_next
+
+        # Oplog backup
+        perform('oplog')
       end
     end
 

@@ -1,3 +1,23 @@
 #!/usr/bin/env ruby
 
 require 'mongo_oplog_backup'
+require 'slop'
+
+opts = Slop.parse(help: true, strict: true) do
+  banner 'Usage: mongo-oplog-backup [options]'
+
+  command 'backup' do
+  banner 'Usage: mongo-oplog-backup backup [options]'
+    on :v, :verbose, 'Enable verbose mode'
+    on :m, :mode, "Mode: full, oplog or auto", argument: :required
+
+    run do |opts, args|
+      config = MongoOplogBackup::Config.new
+      backup = MongoOplogBackup::Backup.new(config)
+      mode = opts[:mode] || 'auto'
+
+      raise "Invalid mode" unless %w(full oplog auto).include?(mode)
+      backup.perform(mode)
+    end
+  end
+end

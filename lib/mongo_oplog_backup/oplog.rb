@@ -1,5 +1,13 @@
 module MongoOplogBackup
   module Oplog
+    def self.each_document(filename)
+      File.open(filename, 'rb') do |stream|
+        while !stream.eof?
+          yield BSON::Document.from_bson(stream)
+        end
+      end
+    end
+
     def self.merge(target, source_files, options={})
       limit = options[:limit] # TODO: use
       force = options[:force]
@@ -13,7 +21,7 @@ module MongoOplogBackup
           last_file_timestamp = nil
           skipped = 0
           wrote = 0
-          each_document(filename) do |doc|
+          Oplog.each_document(filename) do |doc|
             timestamp = doc['ts']
             if !last_timestamp.nil? && timestamp <= last_timestamp
               skipped += 1
