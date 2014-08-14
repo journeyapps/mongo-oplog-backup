@@ -20,20 +20,26 @@ module MongoOplogBackup
       end
       config.mongodump("--out #{config.oplog_dump_folder} --db local --collection oplog.rs #{query}")
 
+      puts "Checking timestamps..."
       timestamps = []
       Oplog.each_document(config.oplog_dump) do |doc|
         timestamps << doc['ts']
       end
 
-      unless timestamps.sorted?
-        raise "Oplog is not sorted"
+      unless timestamps.increasing?
+        raise "Something went wrong - oplog is not ordered."
       end
 
       first = timestamps[0]
       last = timestamps[-1]
 
-      if first != start_at
-        raise "Expected first oplog entry to be #{start_at.inspect} but was #{first.inspect}"
+      if first > start_at
+        raise "Expected first oplog entry to be #{start_at.inspect} but was #{first.inspect}\n" +
+          "The oplog is probably too small.\n" +
+          "Increase the oplog size, the start with another full backup."
+      elsif first < start_at
+        raise "Expected first oplog entry to be #{start_at.inspect} but was #{first.inspect}\n" +
+          "Something went wrong in our query."
       end
 
       result = {
