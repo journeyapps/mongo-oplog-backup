@@ -56,30 +56,16 @@ module MongoOplogBackup
       result
     end
 
-    def latest_oplog_timestamp_moped
-      # Alternative implementation for `latest_oplog_timestamp`
-      require 'moped'
-      session = Moped::Session.new([ "127.0.0.1:27017" ])
-      session.use 'local'
-      oplog = session['oplog.rs']
-      entry = oplog.find.limit(1).sort('$natural' => -1).one
-      if entry
-        entry['ts']
-      else
-        nil
-      end
-    end
-
     def latest_oplog_timestamp
       script = File.expand_path('../../oplog-last-timestamp.js', File.dirname(__FILE__))
       response = JSON.parse(config.mongo('local', script))
-      response['position']
+      return nil unless response['position']
+      BSON::Timestamp.from_json(response['position'])
     end
 
     def backup_full
       position = latest_oplog_timestamp
       raise "Cannot backup with empty oplog" if position.nil?
-      position = BSON::Timestamp.from_json(position)
       backup_name = "backup-#{position}"
       dump_folder = File.join(config.backup_dir, backup_name, 'dump')
       config.mongodump("--out #{dump_folder}")
@@ -89,25 +75,22 @@ module MongoOplogBackup
       }
     end
 
-    def perform(mode='auto')
+    def perform(mode=:auto)
       state_file = config.state_file
       state = JSON.parse(File.read(state_file)) rescue nil
       state ||= {}
       have_position = (state['position'] && state['backup'])
 
-      if mode == 'auto'
+      if mode == :auto
         if have_position
-          mode = 'oplog'
+          mode = :oplog
         else
-          mode = 'full'
+          mode = :full
         end
       end
 
-      if mode == 'oplog' && !have_position
-        raise "Unknown backup position - cannot perform oplog backup."
-      end
-
-      if mode == 'oplog'
+      if mode == :oplog
+        raise "Unknown backup position - cannot perform oplog backup." unless have_position
         puts "Performing incremental oplog backup"
         position = BSON::Timestamp.from_json(state['position'])
         result = backup_oplog(start: position, backup: state['backup'])
@@ -120,16 +103,30 @@ module MongoOplogBackup
         else
           puts "Nothing new to backup"
         end
-      elsif mode == 'full'
+      elsif mode == :full
         puts "Performing full backup"
         result = backup_full
-        stae = result
+        state = result
         File.write(state_file, state.to_json)
         puts
         puts "Performed full backup"
 
         # Oplog backup
-        perform('oplog')
+        perform(:oplog)
+      end
+    end
+
+    def latest_oplog_timestamp_moped
+      # Alternative implementation for `latest_oplog_timestamp`
+      require 'moped'
+      session = Moped::Session.new([ "127.0.0.1:27017" ])
+      session.use 'local'
+      oplog = session['oplog.rs']
+      entry = oplog.find.limit(1).sort('$natural' => -1).one
+      if entry
+        entry['ts']
+      else
+        nil
       end
     end
 

@@ -9,16 +9,20 @@ opts = Slop.parse(help: true, strict: true) do
   command 'backup' do
   banner 'Usage: mongo-oplog-backup backup [options]'
     on :v, :verbose, 'Enable verbose mode'
-    on :m, :mode, "Mode: 'full', 'oplog' or 'auto'. Defaults to 'auto'.", argument: :required
     on :d, :dir, "Directory to store backup files. Defaults to 'backup'.", argument: :required
+    on :full, 'Force full backup'
+    on :oplog, 'Force oplog backup'
 
     run do |opts, args|
-      mode = opts[:mode] || 'auto'
       dir = opts[:dir] || 'backup'
+      mode = :auto
+      if opts.full?
+        mode = :full
+      elsif opts.oplog?
+        mode = :oplog
+      end
       config = MongoOplogBackup::Config.new(dir: dir)
       backup = MongoOplogBackup::Backup.new(config)
-
-      raise "Invalid mode" unless %w(full oplog auto).include?(mode)
       backup.perform(mode)
     end
   end
