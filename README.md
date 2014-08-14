@@ -1,22 +1,18 @@
-# Mongo::Oplog::Backup
+# MongoOplogBackup
 
-TODO: Write a gem description
+**Experimental** incremental backup system for MongoDB based on the oplog.
+
+Not ready for any important data yet.
 
 ## Installation
 
-Add this line to your application's Gemfile:
-
-    gem 'mongo-oplog-backup'
-
-And then execute:
-
-    $ bundle
-
-Or install it yourself as:
-
-    $ gem install mongo-oplog-backup
+    git clone git@github.com:journeyapps/mongo-oplog-backup.git
+    cd mongo-oplog-backup
+    rake install
 
 ## Usage
+
+    mongo-oplog-backup backup --dir mybackup
 
 TODO: Write usage instructions here
 
@@ -26,7 +22,7 @@ TODO: Write usage instructions here
     The only file required to perform incremental backups. It is not used for restoring a backup.
 * `backup-<timestamp>` - The current backup folder.
   * `dump` - a full mongodump
-  * `oplog-<start>-<end>.bson - The oplog from the start timestamp until the end timestamp (inclusive).
+  * `oplog-<start>-<end>.bson` - The oplog from the start timestamp until the end timestamp (inclusive).
 
 Each time a full backup is performed, a new backup folder is created.
 ## Contributing
