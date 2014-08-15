@@ -12,10 +12,10 @@ module MongoOplogBackup
 
     def command_line_options
       ssl = options[:ssl] ? '--ssl ' : ''
-      host = "#{options[:host].strip} "
-      port = "#{options[:port].strip} "
-      username = "#{options[:username].strip} "
-      password = "#{options[:password].strip} "
+      host = options[:host] ? "--host #{options[:host].strip} " : ''
+      port = options[:port] ? "--port #{options[:port].strip} " : ''
+      username = options[:username] ? "--username #{options[:username].strip} " : ''
+      password = options[:password] ? "--password #{options[:password].strip} " : ''
       "#{host}#{port}#{ssl}#{username}#{password}"
     end
 

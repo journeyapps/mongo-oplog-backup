@@ -25,10 +25,10 @@ opts = Slop.parse(help: true, strict: true) do
         dir: dir,
         ssl: opts.ssl?
       }
-      config_opts[:host] = opts.host? ? "--host #{opts[:host]}" : ""
-      config_opts[:port] = opts.port? ? "--port #{opts[:port]}" : ""
-      config_opts[:username] = opts.username? ? "--username #{opts[:username]}" : ""
-      config_opts[:password] = opts.password? ? "--password #{opts[:password]}" : ""
+      config_opts[:host] = opts[:host]
+      config_opts[:port] = opts[:port]
+      config_opts[:username] = opts[:username]
+      config_opts[:password] = opts[:password]
 
       mode = :auto
       if opts.full?

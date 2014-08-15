@@ -22,6 +22,19 @@ describe MongoOplogBackup do
     ts1.should == ts2
   end
 
+  it 'should error on latest oplog entry with invalid port' do
+    b2 = MongoOplogBackup::Backup.new(MongoOplogBackup::Config.new({
+      dir: 'spec-tmp/backup', port: '12345'}))
+    -> { b2.latest_oplog_timestamp }.should raise_error
+  end
+
+  it 'should error on latest oplog entry with invalid password' do
+    b2 = MongoOplogBackup::Backup.new(MongoOplogBackup::Config.new({
+      dir: 'spec-tmp/backup', username: 'foo', password: '123'}))
+    -> { b2.latest_oplog_timestamp }.should raise_error
+  end
+
+
   it "should perform an oplog backup" do
     first = backup.latest_oplog_timestamp
     SESSION.with(safe: true) do |session|

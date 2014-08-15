@@ -23,6 +23,9 @@ module MongoOplogBackup
       end
       config.mongodump("--out #{config.oplog_dump_folder} --db local --collection oplog.rs #{query}")
 
+      unless File.exists? config.oplog_dump
+        raise "mongodump failed"
+      end
       MongoOplogBackup.log.debug "Checking timestamps..."
       timestamps = Oplog.oplog_timestamps(config.oplog_dump)
 
@@ -67,9 +70,13 @@ module MongoOplogBackup
     def latest_oplog_timestamp
       script = File.expand_path('../../oplog-last-timestamp.js', File.dirname(__FILE__))
       result_text = config.mongo('local', script)
-      response = JSON.parse(result_text)
-      return nil unless response['position']
-      BSON::Timestamp.from_json(response['position'])
+      begin
+        response = JSON.parse(result_text)
+        return nil unless response['position']
+        BSON::Timestamp.from_json(response['position'])
+      rescue JSON::ParserError => e
+        raise StandardError, "Failed to connect to MongoDB: #{result_text}"
+      end
     end
 
     def backup_full
