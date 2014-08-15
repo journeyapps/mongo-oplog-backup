@@ -13,6 +13,8 @@ module MongoOplogBackup
     def backup_oplog(options={})
       start_at = options[:start]
       backup = options[:backup]
+      raise ArgumentError, ":backup is required" unless backup
+      raise ArgumentError, ":start is required" unless start_at
 
       if start_at
         query = "--query \"{ts : { \\$gte : { \\$timestamp : { t : #{start_at.seconds}, i : #{start_at.increment} } } }}\""
@@ -51,6 +53,7 @@ module MongoOplogBackup
       else
         outfile = "oplog-#{first}-#{last}.bson"
         full_path = File.join(config.backup_dir, backup, outfile)
+        FileUtils.mkdir_p File.join(config.backup_dir, backup)
         FileUtils.mv config.oplog_dump, full_path
 
         result[:file] = full_path
@@ -63,7 +66,8 @@ module MongoOplogBackup
 
     def latest_oplog_timestamp
       script = File.expand_path('../../oplog-last-timestamp.js', File.dirname(__FILE__))
-      response = JSON.parse(config.mongo('local', script))
+      result_text = config.mongo('local', script)
+      response = JSON.parse(result_text)
       return nil unless response['position']
       BSON::Timestamp.from_json(response['position'])
     end

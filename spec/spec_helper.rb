@@ -12,3 +12,17 @@ RSpec::Matchers.define(:be_same_file_as) do |exected_file_path|
     Digest::MD5.hexdigest(File.read(file_path))
   end
 end
+
+RSpec.configure do |config|
+  config.before(:each) do
+    FileUtils.mkdir_p 'spec-tmp'
+  end
+
+  config.after(:each) do
+    FileUtils.rm_rf 'spec-tmp'
+  end
+end
+
+require 'moped'
+SESSION = Moped::Session.new([ "127.0.0.1:27017" ])
+SESSION.use 'backup-test'

@@ -36,7 +36,7 @@ module MongoOplogBackup
     end
 
     def mongo(db, script)
-      MongoOplogBackup.log.info exec("mongo #{command_line_options} --quiet --norc #{db} #{script}")
+      exec("mongo #{command_line_options} --quiet --norc #{db} #{script}")
     end
   end
 end

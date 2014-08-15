@@ -7,11 +7,6 @@ describe MongoOplogBackup::Oplog do
   let(:oplog3) { 'spec/fixtures/oplog-1408088810:1-1408088928:1.bson'}
   let(:oplog_merged) { 'spec/fixtures/oplog-merged.bson'}
 
-
-  after(:each) do
-    FileUtils.rm_rf 'spec-tmp'
-  end
-
   it 'should extract oplog timestamps' do
     timestamps = MongoOplogBackup::Oplog.oplog_timestamps(oplog1)
     timestamps.should == [
@@ -23,8 +18,6 @@ describe MongoOplogBackup::Oplog do
   end
 
   it 'should merge oplogs' do
-    FileUtils.mkdir_p 'spec-tmp'
-
     merged_out = 'spec-tmp/oplog-merged.bson'
     MongoOplogBackup::Oplog.merge(merged_out, [oplog1, oplog2, oplog3])
 
@@ -37,7 +30,7 @@ describe MongoOplogBackup::Oplog do
     expected_timestamps.sort!  # Not sure if uniq! modifies the order
 
     actual_timestamps = MongoOplogBackup::Oplog.oplog_timestamps(merged_out)
-    actual_timestamps.should == expected_timestamps
+    actual_timestamps.should = expected_timestamps
 
     merged_out.should be_same_file_as oplog_merged
   end
