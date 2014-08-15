@@ -31,7 +31,7 @@ module MongoOplogBackup
           # We can assume that the timestamps are in order.
           # This means we only need to find the first non-overlapping point,
           # and the rest we can pass through directly.
-          puts "Reading #{filename}"
+          MongoOplogBackup.log.debug "Reading #{filename}"
           last_file_timestamp = nil
           skipped = 0
           wrote = 0
@@ -49,7 +49,7 @@ module MongoOplogBackup
             last_file_timestamp = timestamp
           end
 
-          puts "Wrote #{wrote} and skipped #{skipped} oplog entries"
+          MongoOplogBackup.log.info "Wrote #{wrote} and skipped #{skipped} oplog entries from #{filename}"
           raise "Overlap must be exactly 1" unless first || skipped == 1 || force
           first = false
         end

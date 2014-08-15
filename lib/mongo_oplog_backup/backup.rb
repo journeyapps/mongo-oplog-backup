@@ -1,4 +1,5 @@
 require 'json'
+require 'fileutils'
 require 'mongo_oplog_backup/oplog'
 
 module MongoOplogBackup
@@ -20,7 +21,7 @@ module MongoOplogBackup
       end
       config.mongodump("--out #{config.oplog_dump_folder} --db local --collection oplog.rs #{query}")
 
-      puts "Checking timestamps..."
+      MongoOplogBackup.log.debug "Checking timestamps..."
       timestamps = Oplog.oplog_timestamps(config.oplog_dump)
 
       unless timestamps.increasing?
@@ -49,13 +50,14 @@ module MongoOplogBackup
         result[:empty] = true
       else
         outfile = "oplog-#{first}-#{last}.bson"
-        puts config.exec("mv #{config.oplog_dump} #{File.join(config.backup_dir, backup, outfile)}")
+        full_path = File.join(config.backup_dir, backup, outfile)
+        FileUtils.mv config.oplog_dump, full_path
 
-        result[:file] = outfile
+        result[:file] = full_path
         result[:empty] = false
       end
 
-      puts config.exec("rm -r #{config.oplog_dump_folder}")
+      FileUtils.rm_r config.oplog_dump_folder rescue nil
       result
     end
 
@@ -94,25 +96,23 @@ module MongoOplogBackup
 
       if mode == :oplog
         raise "Unknown backup position - cannot perform oplog backup." unless have_position
-        puts "Performing incremental oplog backup"
+        MongoOplogBackup.log.info "Performing incremental oplog backup"
         position = BSON::Timestamp.from_json(state['position'])
         result = backup_oplog(start: position, backup: state['backup'])
         unless result[:empty]
           new_entries = result[:entries] - 1
           state['position'] = result[:position]
           File.write(state_file, state.to_json)
-          puts
-          puts "Backed up #{new_entries} new entries"
+          MongoOplogBackup.log.info "Backed up #{new_entries} new entries to #{result[:file]}"
         else
-          puts "Nothing new to backup"
+          MongoOplogBackup.log.info "Nothing new to backup"
         end
       elsif mode == :full
-        puts "Performing full backup"
+        MongoOplogBackup.log.info "Performing full backup"
         result = backup_full
         state = result
         File.write(state_file, state.to_json)
-        puts
-        puts "Performed full backup"
+        MongoOplogBackup.log.info "Performed full backup"
 
         # Oplog backup
         perform(:oplog)

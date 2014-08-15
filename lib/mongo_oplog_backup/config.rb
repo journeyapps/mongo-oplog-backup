@@ -27,16 +27,16 @@ module MongoOplogBackup
     end
 
     def exec(cmd)
-      puts ">>> #{cmd}"
+      MongoOplogBackup.log.debug ">>> #{cmd}"
       `#{cmd}`
     end
 
     def mongodump(args)
-      puts exec("mongodump #{command_line_options} #{args}")
+      MongoOplogBackup.log.info exec("mongodump #{command_line_options} #{args}")
     end
 
     def mongo(db, script)
-      exec("mongo #{command_line_options} --quiet --norc #{db} #{script}")
+      MongoOplogBackup.log.info exec("mongo #{command_line_options} --quiet --norc #{db} #{script}")
     end
   end
 end
