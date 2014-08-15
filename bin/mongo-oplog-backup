@@ -13,15 +13,30 @@ opts = Slop.parse(help: true, strict: true) do
     on :full, 'Force full backup'
     on :oplog, 'Force oplog backup'
 
+    on :ssl, "Connect to a mongod instance over an SSL connection"
+    on :host, "Specifies a resolvable hostname for the mongod that you wish to backup.", default: 'localhost', argument: :required
+    on :port, "Specifies the port that mongod is running on", default: '27017', argument: :required
+    on :u, :username, "Specifies a username to authenticate to the MongoDB instance, if your database requires authentication. Use in conjunction with the --password option to supply a password.", argument: :required
+    on :p, :password, "Specifies a password to authenticate to the MongoDB instance. Use in conjunction with the --username option to supply a username. Note. the password will not be prompted for, so must be passed as an argument", argument: :required
+
     run do |opts, args|
       dir = opts[:dir] || 'backup'
+      config_opts = {
+        dir: dir,
+        ssl: opts.ssl?
+      }
+      config_opts[:host] = opts.host? ? "--host #{opts[:host]}" : ""
+      config_opts[:port] = opts.port? ? "--port #{opts[:port]}" : ""
+      config_opts[:username] = opts.username? ? "--username #{opts[:username]}" : ""
+      config_opts[:password] = opts.password? ? "--password #{opts[:password]}" : ""
+
       mode = :auto
       if opts.full?
         mode = :full
       elsif opts.oplog?
         mode = :oplog
       end
-      config = MongoOplogBackup::Config.new(dir: dir)
+      config = MongoOplogBackup::Config.new(config_opts)
       backup = MongoOplogBackup::Backup.new(config)
       backup.perform(mode)
     end

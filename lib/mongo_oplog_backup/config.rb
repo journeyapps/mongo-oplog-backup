@@ -11,7 +11,12 @@ module MongoOplogBackup
     end
 
     def command_line_options
-      ''
+      ssl = options[:ssl] ? '--ssl ' : ''
+      host = "#{options[:host].strip} "
+      port = "#{options[:port].strip} "
+      username = "#{options[:username].strip} "
+      password = "#{options[:password].strip} "
+      "#{host}#{port}#{ssl}#{username}#{password}"
     end
 
     def oplog_dump_folder
