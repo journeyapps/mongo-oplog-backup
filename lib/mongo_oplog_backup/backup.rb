@@ -21,10 +21,7 @@ module MongoOplogBackup
       config.mongodump("--out #{config.oplog_dump_folder} --db local --collection oplog.rs #{query}")
 
       puts "Checking timestamps..."
-      timestamps = []
-      Oplog.each_document(config.oplog_dump) do |doc|
-        timestamps << doc['ts']
-      end
+      timestamps = Oplog.oplog_timestamps(config.oplog_dump)
 
       unless timestamps.increasing?
         raise "Something went wrong - oplog is not ordered."

@@ -8,6 +8,16 @@ module MongoOplogBackup
       end
     end
 
+    def self.oplog_timestamps(filename)
+      timestamps = []
+      each_document(filename) do |doc|
+        # This can be optimized by only decoding the timestamp
+        # (first field), instead of decoding the entire document.
+        timestamps << doc['ts']
+      end
+      timestamps
+    end
+
     def self.merge(target, source_files, options={})
       limit = options[:limit] # TODO: use
       force = options[:force]
@@ -17,6 +27,10 @@ module MongoOplogBackup
         first = true
 
         source_files.each do |filename|
+          # Optimize:
+          # We can assume that the timestamps are in order.
+          # This means we only need to find the first non-overlapping point,
+          # and the rest we can pass through directly.
           puts "Reading #{filename}"
           last_file_timestamp = nil
           skipped = 0

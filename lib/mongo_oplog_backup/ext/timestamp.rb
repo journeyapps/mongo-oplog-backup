@@ -11,6 +11,14 @@ module MongoOplogBackup::Ext
       "#{seconds}:#{increment}"
     end
 
+    def hash
+      to_s.hash
+    end
+
+    def eql? other
+      self == other
+    end
+
     module ClassMethods
       # Accepts {'t' => seconds, 'i' => increment}
       def from_json(data)
