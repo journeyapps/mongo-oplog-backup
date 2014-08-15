@@ -1,0 +1,6 @@
+# Any settings specified here are overridden by command line options.
+host: localhost
+port: 27017
+username: backup-user
+password: s3kr1t
+ssl: true

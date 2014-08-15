@@ -3,7 +3,23 @@ module MongoOplogBackup
     attr_reader :options
 
     def initialize(options)
-      @options = options
+      config_file = options.delete(:file)
+      # Command line options take precedence
+      @options = from_file(config_file).merge(options) 
+    end
+
+    def from_file file
+      options = {}
+      unless file.nil?
+        conf = YAML.load_file(file)
+        options[:ssl] = conf["ssl"] unless conf["ssl"].nil?
+        options[:host] = conf["host"] unless conf["host"].nil?
+        options[:port] = conf["port"].to_s unless conf["port"].nil?
+        options[:username] = conf["username"] unless conf["username"].nil?
+        options[:password] = conf["password"] unless conf["password"].nil?
+      end
+      
+      options
     end
 
     def backup_dir

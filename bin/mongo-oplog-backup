@@ -13,6 +13,7 @@ opts = Slop.parse(help: true, strict: true) do
     on :full, 'Force full backup'
     on :oplog, 'Force oplog backup'
 
+    on :f, :file, 'Configuration file for common defaults', argument: :required
     on :ssl, "Connect to a mongod instance over an SSL connection"
     on :host, "Specifies a resolvable hostname for the mongod that you wish to backup.", default: 'localhost', argument: :required
     on :port, "Specifies the port that mongod is running on", default: '27017', argument: :required
@@ -25,6 +26,7 @@ opts = Slop.parse(help: true, strict: true) do
         dir: dir,
         ssl: opts.ssl?
       }
+      config_opts[:file] = opts[:file]
       config_opts[:host] = opts[:host]
       config_opts[:port] = opts[:port]
       config_opts[:username] = opts[:username]
