@@ -26,4 +26,21 @@ opts = Slop.parse(help: true, strict: true) do
       backup.perform(mode)
     end
   end
+
+  command 'merge' do
+  banner 'Usage: mongo-oplog-backup merge [options]'
+    on :v, :verbose, 'Enable verbose mode'
+    on :d, :dir, "Directory containing the backup to restore. Must contain a 'dump' folder.", argument: :required
+
+    run do |opts, args|
+      dir = opts[:dir]
+      raise ArgumentError, 'dir must be specified' unless dir
+      raise ArgumentError, 'dir must contain a dump subfolder' unless File.directory?(File.join(dir, 'dump'))
+
+      MongoOplogBackup::Oplog.merge_backup(dir)
+      puts
+      puts "Restore the backup with: "
+      puts "mongorestore [--drop] --oplogReplay #{File.join(dir, 'dump')}"
+    end
+  end
 end

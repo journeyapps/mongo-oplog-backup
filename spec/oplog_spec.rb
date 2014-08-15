@@ -30,8 +30,29 @@ describe MongoOplogBackup::Oplog do
     expected_timestamps.sort!  # Not sure if uniq! modifies the order
 
     actual_timestamps = MongoOplogBackup::Oplog.oplog_timestamps(merged_out)
-    actual_timestamps.should = expected_timestamps
+    actual_timestamps.should == expected_timestamps
 
-    merged_out.should be_same_file_as oplog_merged
+    merged_out.should be_same_oplog_as oplog_merged
+  end
+
+  it 'should parse timestamps from a filename' do
+    timestamps = MongoOplogBackup::Oplog.timestamps_from_filename('some/oplog-1408088734:1-1408088740:52.bson')
+    timestamps.should == {
+      first: BSON::Timestamp.new(1408088734, 1),
+      last: BSON::Timestamp.new(1408088740, 52)
+    }
+  end
+  it 'should sort oplogs in a folder' do
+    oplogs = MongoOplogBackup::Oplog.find_oplogs('spec/fixtures')
+    oplogs.should == [oplog1, oplog2, oplog3]
+  end
+
+  it "should merge a backup folder" do
+    FileUtils.mkdir_p 'spec-tmp/backup'
+    FileUtils.cp_r Dir['spec/fixtures/oplog-*.bson'], 'spec-tmp/backup/'
+
+    MongoOplogBackup::Oplog.merge_backup('spec-tmp/backup')
+
+    'spec-tmp/backup/dump/oplog.bson'.should be_same_oplog_as oplog_merged
   end
 end
