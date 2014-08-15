@@ -22,7 +22,7 @@ RSpec::Matchers.define(:be_same_oplog_as) do |exected_file_path|
     actual_file_path.should be_same_file_as exected_file_path
   end
 
-  failure_message_for_should do |actual_file_path|
+  failure_message do |actual_file_path|
     ets = timestamps(exected_file_path).join("\n")
     ats = timestamps(actual_file_path).join("\n")
     "expected that #{actual_file_path} would be the same as #{exected_file_path}\n" +
@@ -36,6 +36,10 @@ RSpec::Matchers.define(:be_same_oplog_as) do |exected_file_path|
 end
 
 RSpec.configure do |config|
+  config.expect_with :rspec do |c|
+    c.syntax = :should
+  end
+
   config.before(:each) do
     FileUtils.mkdir_p 'spec-tmp'
   end

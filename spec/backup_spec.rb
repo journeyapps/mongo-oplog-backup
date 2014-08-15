@@ -37,6 +37,7 @@ describe MongoOplogBackup do
 
   it "should perform an oplog backup" do
     first = backup.latest_oplog_timestamp
+    first.should_not be_nil
     SESSION.with(safe: true) do |session|
       5.times do
         session['test'].insert({a: 1})
