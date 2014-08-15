@@ -10,6 +10,16 @@ module MongoOplogBackup
       @config = config
     end
 
+    def lock(lockname, &block)
+      File.open(lockname, File::RDWR|File::CREAT, 0644) do |file|
+        got_lock = file.flock(File::LOCK_EX|File::LOCK_NB)
+        if got_lock == false
+          raise "Failed to acquire lock - another backup may be busy"
+        end
+        yield
+      end
+    end
+
     def backup_oplog(options={})
       start_at = options[:start]
       backup = options[:backup]
@@ -92,41 +102,43 @@ module MongoOplogBackup
     end
 
     def perform(mode=:auto)
-      state_file = config.state_file
-      state = JSON.parse(File.read(state_file)) rescue nil
-      state ||= {}
-      have_position = (state['position'] && state['backup'])
+      lock(config.lock_file) do
+        state_file = config.state_file
+        state = JSON.parse(File.read(state_file)) rescue nil
+        state ||= {}
+        have_position = (state['position'] && state['backup'])
 
-      if mode == :auto
-        if have_position
-          mode = :oplog
-        else
-          mode = :full
+        if mode == :auto
+          if have_position
+            mode = :oplog
+          else
+            mode = :full
+          end
         end
-      end
 
-      if mode == :oplog
-        raise "Unknown backup position - cannot perform oplog backup." unless have_position
-        MongoOplogBackup.log.info "Performing incremental oplog backup"
-        position = BSON::Timestamp.from_json(state['position'])
-        result = backup_oplog(start: position, backup: state['backup'])
-        unless result[:empty]
-          new_entries = result[:entries] - 1
-          state['position'] = result[:position]
+        if mode == :oplog
+          raise "Unknown backup position - cannot perform oplog backup." unless have_position
+          MongoOplogBackup.log.info "Performing incremental oplog backup"
+          position = BSON::Timestamp.from_json(state['position'])
+          result = backup_oplog(start: position, backup: state['backup'])
+          unless result[:empty]
+            new_entries = result[:entries] - 1
+            state['position'] = result[:position]
+            File.write(state_file, state.to_json)
+            MongoOplogBackup.log.info "Backed up #{new_entries} new entries to #{result[:file]}"
+          else
+            MongoOplogBackup.log.info "Nothing new to backup"
+          end
+        elsif mode == :full
+          MongoOplogBackup.log.info "Performing full backup"
+          result = backup_full
+          state = result
           File.write(state_file, state.to_json)
-          MongoOplogBackup.log.info "Backed up #{new_entries} new entries to #{result[:file]}"
-        else
-          MongoOplogBackup.log.info "Nothing new to backup"
-        end
-      elsif mode == :full
-        MongoOplogBackup.log.info "Performing full backup"
-        result = backup_full
-        state = result
-        File.write(state_file, state.to_json)
-        MongoOplogBackup.log.info "Performed full backup"
+          MongoOplogBackup.log.info "Performed full backup"
 
-        # Oplog backup
-        perform(:oplog)
+          # Oplog backup
+          perform(:oplog)
+        end
       end
     end
 

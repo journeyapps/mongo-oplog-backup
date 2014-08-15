@@ -31,6 +31,10 @@ module MongoOplogBackup
       File.join(backup_dir, 'backup.json')
     end
 
+    def lock_file
+      File.join(backup_dir, 'backup.lock')
+    end
+
     def exec(cmd)
       MongoOplogBackup.log.debug ">>> #{cmd}"
       `#{cmd}`
