@@ -2,6 +2,9 @@ require 'json'
 require 'fileutils'
 require 'mongo_oplog_backup/oplog'
 
+class LockError < StandardError
+end
+
 module MongoOplogBackup
   class Backup
     attr_reader :config
@@ -14,7 +17,7 @@ module MongoOplogBackup
       File.open(lockname, File::RDWR|File::CREAT, 0644) do |file|
         got_lock = file.flock(File::LOCK_EX|File::LOCK_NB)
         if got_lock == false
-          raise "Failed to acquire lock - another backup may be busy"
+          raise LockError, "Failed to acquire lock - another backup may be busy"
         end
         yield
       end
@@ -101,7 +104,11 @@ module MongoOplogBackup
       }
     end
 
-    def perform(mode=:auto)
+    def perform(mode=:auto, options={})
+      if_not_busy = options[:if_not_busy] || false
+
+      perform_oplog_afterwards = false
+
       lock(config.lock_file) do
         state_file = config.state_file
         state = JSON.parse(File.read(state_file)) rescue nil
@@ -136,9 +143,22 @@ module MongoOplogBackup
           File.write(state_file, state.to_json)
           MongoOplogBackup.log.info "Performed full backup"
 
-          # Oplog backup
-          perform(:oplog)
+          perform_oplog_afterwards = true
         end
+      end
+
+      # Has to be outside the lock
+      if perform_oplog_afterwards
+        # Oplog backup
+        perform(:oplog, options)
+      end
+
+    rescue LockError => e
+      if if_not_busy
+        MongoOplogBackup.log.info e.message
+        MongoOplogBackup.log.info 'Not performing backup'
+      else
+        raise
       end
     end
 

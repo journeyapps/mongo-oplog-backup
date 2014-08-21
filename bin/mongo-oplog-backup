@@ -12,6 +12,7 @@ opts = Slop.parse(help: true, strict: true) do
     on :d, :dir, "Directory to store backup files. Defaults to 'backup'.", argument: :required
     on :full, 'Force full backup'
     on :oplog, 'Force oplog backup'
+    on :'if-not-busy', 'Do nothing when another backup is busy running.'
 
     on :f, :file, 'Configuration file for common defaults', argument: :required
     on :ssl, "Connect to a mongod instance over an SSL connection"
@@ -40,7 +41,7 @@ opts = Slop.parse(help: true, strict: true) do
       end
       config = MongoOplogBackup::Config.new(config_opts)
       backup = MongoOplogBackup::Backup.new(config)
-      backup.perform(mode)
+      backup.perform(mode, if_not_busy: opts.if_not_busy?)
     end
   end
 
