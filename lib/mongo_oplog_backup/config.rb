@@ -34,7 +34,7 @@ module MongoOplogBackup
       password = options[:password] ? "--password #{options[:password].strip} " : ''
       # TODO: make this configurable?
       authdb = options[:username] ? '--authenticationDatabase admin ' : ''
-      "#{host}#{port}#{ssl}#{username}#{password}"
+      "#{host}#{port}#{ssl}#{username}#{password}#{authdb}"
     end
 
     def oplog_dump_folder
