@@ -109,6 +109,7 @@ module MongoOplogBackup
 
       perform_oplog_afterwards = false
 
+      FileUtils.mkdir_p config.backup_dir
       lock(config.lock_file) do
         state_file = config.state_file
         state = JSON.parse(File.read(state_file)) rescue nil
