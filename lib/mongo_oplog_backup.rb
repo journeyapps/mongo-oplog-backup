@@ -19,5 +19,5 @@ module MongoOplogBackup
     Command.logger = log
   end
 
-  @@log = Logger.new STDOUT
+  MongoOplogBackup.log = Logger.new STDOUT
 end
