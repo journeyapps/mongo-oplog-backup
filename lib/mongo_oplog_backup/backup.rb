@@ -82,7 +82,7 @@ module MongoOplogBackup
 
     def latest_oplog_timestamp
       script = File.expand_path('../../oplog-last-timestamp.js', File.dirname(__FILE__))
-      result_text = config.mongo('local', script)
+      result_text = config.mongo('admin', script)
       begin
         response = JSON.parse(result_text)
         return nil unless response['position']
