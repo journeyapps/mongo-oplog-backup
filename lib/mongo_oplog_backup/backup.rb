@@ -97,6 +97,7 @@ module MongoOplogBackup
       raise "Cannot backup with empty oplog" if position.nil?
       backup_name = "backup-#{position}"
       dump_folder = File.join(config.backup_dir, backup_name, 'dump')
+      # TODO: fail hard if this command fails.
       config.mongodump("--out #{dump_folder}")
       return {
         position: position,

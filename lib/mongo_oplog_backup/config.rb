@@ -32,6 +32,8 @@ module MongoOplogBackup
       port = options[:port] ? "--port #{options[:port].strip} " : ''
       username = options[:username] ? "--username #{options[:username].strip} " : ''
       password = options[:password] ? "--password #{options[:password].strip} " : ''
+      # TODO: make this configurable?
+      authdb = options[:username] ? '--authenticationDatabase admin ' : ''
       "#{host}#{port}#{ssl}#{username}#{password}"
     end
 
