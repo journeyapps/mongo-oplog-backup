@@ -1,12 +1,25 @@
 require 'open3'
 require 'io/wait'
 
+
 module MongoOplogBackup
-  class Process
+  class Command
+    def self.logger= logger
+      @logger = logger
+    end
+
+    def self.logger
+      @logger
+    end
+
     attr_reader :command
     attr_reader :standard_output
     attr_reader :standard_error
     attr_reader :status
+
+    def self.execute(command, options={})
+      Command.new(command, options).run
+    end
 
     # command must be an array containing the command and arguments
     def initialize(command, options={})
@@ -16,13 +29,17 @@ module MongoOplogBackup
       @out_blocks = []
       @err_blocks = []
 
-      if options[:keep_output]
-        on_stdout do |data|
-          @standard_output << data
-        end
-        on_stderr do |data|
-          @standard_error << data
-        end
+      logger = options[:logger] || Command.logger
+
+      if logger
+        log_output(logger)
+      end
+
+      on_stdout do |data|
+        @standard_output << data
+      end
+      on_stderr do |data|
+        @standard_error << data
       end
     end
 
@@ -70,6 +87,7 @@ module MongoOplogBackup
 
         wait_thr.value
       end
+      raise!
       self
     end
 

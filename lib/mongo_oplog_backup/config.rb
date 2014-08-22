@@ -1,3 +1,5 @@
+require 'shellwords'
+
 module MongoOplogBackup
   class Config
     attr_reader :options
@@ -55,11 +57,8 @@ module MongoOplogBackup
     end
 
     def exec(cmd)
-      # TODO: filter out password
-      MongoOplogBackup.log.debug ">>> #{cmd}"
-      p = Process.new(cmd, keep_output: true)
-      p.log_output(MongoOplogBackup.log)
-      p.run
+      MongoOplogBackup.log.debug ">>> #{command_string(cmd)}"
+      Command.execute(cmd)
     end
 
     def mongodump(*args)
@@ -68,6 +67,20 @@ module MongoOplogBackup
 
     def mongo(db, script)
       exec(['mongo'] + command_line_options + ['--quiet', '--norc', script])
+    end
+
+    def command_string(cmd)
+      previous = nil
+      filtered = cmd.map do |token|
+        pwd = (previous == '--password')
+        previous = token
+        if pwd
+          '***'
+        else
+          token
+        end
+      end
+      filtered.shelljoin
     end
   end
 end
