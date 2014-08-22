@@ -1,3 +1,5 @@
+require 'shellwords'
+
 module MongoOplogBackup
   class Config
     attr_reader :options
@@ -18,7 +20,7 @@ module MongoOplogBackup
         options[:username] = conf["username"] unless conf["username"].nil?
         options[:password] = conf["password"] unless conf["password"].nil?
       end
-      
+
       options
     end
 
@@ -27,14 +29,15 @@ module MongoOplogBackup
     end
 
     def command_line_options
-      ssl = options[:ssl] ? '--ssl ' : ''
-      host = options[:host] ? "--host #{options[:host].strip} " : ''
-      port = options[:port] ? "--port #{options[:port].strip} " : ''
-      username = options[:username] ? "--username #{options[:username].strip} " : ''
-      password = options[:password] ? "--password #{options[:password].strip} " : ''
-      # TODO: make this configurable?
-      authdb = options[:username] ? '--authenticationDatabase admin ' : ''
-      "#{host}#{port}#{ssl}#{username}#{password}#{authdb}"
+      args = []
+      args << '--ssl' if options[:ssl]
+      [:host, :port, :username, :password].each do |option|
+        args += ["--#{option}", options[option].strip] if options[option]
+      end
+
+      args += ['--authenticationDatabase', 'admin'] if options[:username]
+
+      args
     end
 
     def oplog_dump_folder
@@ -54,16 +57,30 @@ module MongoOplogBackup
     end
 
     def exec(cmd)
-      MongoOplogBackup.log.debug ">>> #{cmd}"
-      `#{cmd}`
+      MongoOplogBackup.log.debug ">>> #{command_string(cmd)}"
+      Command.execute(cmd)
     end
 
-    def mongodump(args)
-      MongoOplogBackup.log.info exec("mongodump #{command_line_options} #{args}")
+    def mongodump(*args)
+      exec(['mongodump'] + command_line_options + args.flatten)
     end
 
     def mongo(db, script)
-      exec("mongo #{command_line_options} --quiet --norc #{db} #{script}")
+      exec(['mongo'] + command_line_options + ['--quiet', '--norc', script])
+    end
+
+    def command_string(cmd)
+      previous = nil
+      filtered = cmd.map do |token|
+        pwd = (previous == '--password')
+        previous = token
+        if pwd
+          '***'
+        else
+          token
+        end
+      end
+      filtered.shelljoin
     end
   end
 end

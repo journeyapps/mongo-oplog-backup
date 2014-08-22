@@ -30,11 +30,13 @@ module MongoOplogBackup
       raise ArgumentError, ":start is required" unless start_at
 
       if start_at
-        query = "--query \"{ts : { \\$gte : { \\$timestamp : { t : #{start_at.seconds}, i : #{start_at.increment} } } }}\""
+        query = ['--query', "{ts : { $gte : { $timestamp : { t : #{start_at.seconds}, i : #{start_at.increment} } } }}"]
       else
-        query = ""
+        query = []
       end
-      config.mongodump("--out #{config.oplog_dump_folder} --db local --collection oplog.rs #{query}")
+      config.mongodump(['--out', config.oplog_dump_folder,
+        '--db', 'local', '--collection', 'oplog.rs'] +
+        query)
 
       unless File.exists? config.oplog_dump
         raise "mongodump failed"
@@ -82,7 +84,7 @@ module MongoOplogBackup
 
     def latest_oplog_timestamp
       script = File.expand_path('../../oplog-last-timestamp.js', File.dirname(__FILE__))
-      result_text = config.mongo('admin', script)
+      result_text = config.mongo('admin', script).standard_output
       begin
         response = JSON.parse(result_text)
         return nil unless response['position']
@@ -97,8 +99,10 @@ module MongoOplogBackup
       raise "Cannot backup with empty oplog" if position.nil?
       backup_name = "backup-#{position}"
       dump_folder = File.join(config.backup_dir, backup_name, 'dump')
-      # TODO: fail hard if this command fails.
-      config.mongodump("--out #{dump_folder}")
+      config.mongodump('--out', dump_folder)
+      unless File.directory? dump_folder
+        raise 'Full backup failed'
+      end
       return {
         position: position,
         backup: backup_name
