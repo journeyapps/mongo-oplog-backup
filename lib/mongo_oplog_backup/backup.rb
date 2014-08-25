@@ -99,10 +99,18 @@ module MongoOplogBackup
       raise "Cannot backup with empty oplog" if position.nil?
       backup_name = "backup-#{position}"
       dump_folder = File.join(config.backup_dir, backup_name, 'dump')
-      config.mongodump('--out', dump_folder)
+      result = config.mongodump('--out', dump_folder)
       unless File.directory? dump_folder
+        MongoOplogBackup.log.error 'Backup folder does not exist'
         raise 'Full backup failed'
       end
+
+      File.write(File.join(dump_folder, 'debug.log'), result.standard_output)
+
+      unless result.standard_error.length == 0
+        File.write(File.join(dump_folder, 'error.log'), result.standard_error)
+      end
+
       return {
         position: position,
         backup: backup_name
