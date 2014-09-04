@@ -6,7 +6,7 @@ describe MongoOplogBackup do
     MongoOplogBackup::VERSION.should_not be_nil
   end
 
-  let(:backup) { MongoOplogBackup::Backup.new(MongoOplogBackup::Config.new dir: 'spec-tmp/backup') }
+  let(:backup) { MongoOplogBackup::Backup.new(MongoOplogBackup::Config.new(dir: 'spec-tmp/backup'), 'backup1') }
 
   before(:all) do
     # We need one entry in the oplog to start with
@@ -44,12 +44,18 @@ describe MongoOplogBackup do
       end
     end
     last = backup.latest_oplog_timestamp
-    result = backup.backup_oplog(start: first, backup: 'backup1')
+    FileUtils.mkdir_p backup.backup_folder
+    backup.write_state({position: first})
+    result = backup.backup_oplog(backup: 'backup1')
+    result[:entries].should == 6
+    result[:empty].should == false
+    result[:position].should == last
+    result[:first].should == first
+
     file = result[:file]
     timestamps = MongoOplogBackup::Oplog.oplog_timestamps(file)
     timestamps.count.should == 6
     timestamps.first.should == first
     timestamps.last.should == last
-
   end
 end

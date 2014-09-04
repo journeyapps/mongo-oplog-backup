@@ -50,11 +50,12 @@ To backup from localhost to the `mybackup` directory.
 The first run will perform a full backup. Subsequent runs will backup any new entries from the oplog.
 A full backup can be forced with the `--full` option.
 
-Sample cron script to perform incremental backups every 15 minutes:
+Sample cron script to perform incremental backups every 15 minutes, and a full backup once a week at 00:05:
 
-    0,15,30,45 * * * * /path/to/ruby/bin/mongo-oplog-backup backup --dir /path/to/backup/location --oplog --if-not-busy >> /path/to/backup.log
+    0,15,30,45 * * * * /path/to/ruby/bin/mongo-oplog-backup backup --dir /path/to/backup/location --oplog >> /path/to/backup.log
+    5 0 * * 1 /path/to/ruby/bin/mongo-oplog-backup backup --dir /path/to/backup/location --full >> /path/to/backup.log
 
-It is also recommended to do a full backup every few days. The restore process may
+It is recommended to do a full backup every few days. The restore process may
 be very inefficient if the oplogs grow larger than a full backup.
 
 For connection and authentication options, see `mongo-oplog-backup backup --help`.
@@ -78,7 +79,10 @@ This allows you to restore the backup with the `mongorestore` command:
 
 * `backup.json` - Stores the current state (oplog timestamp and backup folder).
     The only file required to perform incremental backups. It is not used for restoring a backup.
+* `backup.lock` - Lock file to prevent two full backups from running concurrently.
 * `backup-<timestamp>` - The current backup folder.
+  * `backup.lock` - Lock file preventing two backups running concurrently in this folder.
+  * `status.json` - backup status (oplog timestamp)
   * `dump` - a full mongodump
   * `oplog-<start>-<end>.bson` - The oplog from the start timestamp until the end timestamp (inclusive).
 

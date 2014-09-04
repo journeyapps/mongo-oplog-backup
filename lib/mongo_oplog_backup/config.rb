@@ -41,18 +41,18 @@ module MongoOplogBackup
     end
 
     def oplog_dump_folder
-      File.join(backup_dir, 'dump')
+      File.join(backup_dir, 'tmp-dump')
     end
 
     def oplog_dump
       File.join(oplog_dump_folder, 'local/oplog.rs.bson')
     end
 
-    def state_file
+    def global_state_file
       File.join(backup_dir, 'backup.json')
     end
 
-    def lock_file
+    def global_lock_file
       File.join(backup_dir, 'backup.lock')
     end
 

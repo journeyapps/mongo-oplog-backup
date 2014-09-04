@@ -7,14 +7,35 @@ end
 
 module MongoOplogBackup
   class Backup
-    attr_reader :config
+    attr_reader :config, :backup_name
 
-    def initialize(config)
+    def backup_folder
+      return nil unless backup_name
+      File.join(config.backup_dir, backup_name)
+    end
+
+    def state_file
+      File.join(backup_folder, 'state.json')
+    end
+
+    def initialize(config, backup_name=nil)
       @config = config
+      @backup_name = backup_name
+      if backup_name.nil?
+        state_file = config.global_state_file
+        state = JSON.parse(File.read(state_file)) rescue nil
+        state ||= {}
+        @backup_name = state['backup']
+      end
+    end
+
+    def write_state(state)
+      File.write(state_file, state.to_json)
     end
 
     def lock(lockname, &block)
       File.open(lockname, File::RDWR|File::CREAT, 0644) do |file|
+        # Get a non-blocking lock
         got_lock = file.flock(File::LOCK_EX|File::LOCK_NB)
         if got_lock == false
           raise LockError, "Failed to acquire lock - another backup may be busy"
@@ -24,16 +45,14 @@ module MongoOplogBackup
     end
 
     def backup_oplog(options={})
-      start_at = options[:start]
-      backup = options[:backup]
-      raise ArgumentError, ":backup is required" unless backup
+      raise ArgumentError, "No state in #{backup_name}" unless File.exists? state_file
+
+      backup_state = JSON.parse(File.read(state_file))
+      start_at = options[:start] || BSON::Timestamp.from_json(backup_state['position'])
       raise ArgumentError, ":start is required" unless start_at
 
-      if start_at
-        query = ['--query', "{ts : { $gte : { $timestamp : { t : #{start_at.seconds}, i : #{start_at.increment} } } }}"]
-      else
-        query = []
-      end
+      query = ['--query', "{ts : { $gte : { $timestamp : { t : #{start_at.seconds}, i : #{start_at.increment} } } }}"]
+
       config.mongodump(['--out', config.oplog_dump_folder,
         '--db', 'local', '--collection', 'oplog.rs'] +
         query)
@@ -70,10 +89,13 @@ module MongoOplogBackup
         result[:empty] = true
       else
         outfile = "oplog-#{first}-#{last}.bson"
-        full_path = File.join(config.backup_dir, backup, outfile)
-        FileUtils.mkdir_p File.join(config.backup_dir, backup)
+        full_path = File.join(backup_folder, outfile)
+        FileUtils.mkdir_p backup_folder
         FileUtils.mv config.oplog_dump, full_path
 
+        write_state({
+          'position' => result[:position]
+        })
         result[:file] = full_path
         result[:empty] = false
       end
@@ -97,8 +119,11 @@ module MongoOplogBackup
     def backup_full
       position = latest_oplog_timestamp
       raise "Cannot backup with empty oplog" if position.nil?
-      backup_name = "backup-#{position}"
-      dump_folder = File.join(config.backup_dir, backup_name, 'dump')
+      @backup_name = "backup-#{position}"
+      if File.exists? backup_folder
+        raise "Backup folder '#{backup_folder}' already exists; not performing backup."
+      end
+      dump_folder = File.join(backup_folder, 'dump')
       result = config.mongodump('--out', dump_folder)
       unless File.directory? dump_folder
         MongoOplogBackup.log.error 'Backup folder does not exist'
@@ -111,6 +136,10 @@ module MongoOplogBackup
         File.write(File.join(dump_folder, 'error.log'), result.standard_error)
       end
 
+      write_state({
+        'position' => position
+      })
+
       return {
         position: position,
         backup: backup_name
@@ -118,61 +147,39 @@ module MongoOplogBackup
     end
 
     def perform(mode=:auto, options={})
-      if_not_busy = options[:if_not_busy] || false
-
-      perform_oplog_afterwards = false
-
       FileUtils.mkdir_p config.backup_dir
-      lock(config.lock_file) do
-        state_file = config.state_file
-        state = JSON.parse(File.read(state_file)) rescue nil
-        state ||= {}
-        have_position = (state['position'] && state['backup'])
+      have_backup = backup_folder != nil
 
-        if mode == :auto
-          if have_position
-            mode = :oplog
-          else
-            mode = :full
-          end
+      if mode == :auto
+        if have_backup
+          mode = :oplog
+        else
+          mode = :full
         end
+      end
 
-        if mode == :oplog
-          raise "Unknown backup position - cannot perform oplog backup." unless have_position
-          MongoOplogBackup.log.info "Performing incremental oplog backup"
-          position = BSON::Timestamp.from_json(state['position'])
-          result = backup_oplog(start: position, backup: state['backup'])
+      if mode == :oplog
+        raise "Unknown backup position - cannot perform oplog backup." unless have_backup
+        MongoOplogBackup.log.info "Performing incremental oplog backup"
+        lock(File.join(backup_folder, 'backup.lock')) do
+          result = backup_oplog
           unless result[:empty]
             new_entries = result[:entries] - 1
-            state['position'] = result[:position]
-            File.write(state_file, state.to_json)
             MongoOplogBackup.log.info "Backed up #{new_entries} new entries to #{result[:file]}"
           else
             MongoOplogBackup.log.info "Nothing new to backup"
           end
-        elsif mode == :full
+        end
+      elsif mode == :full
+        lock(config.global_lock_file) do
           MongoOplogBackup.log.info "Performing full backup"
           result = backup_full
-          state = result
-          File.write(state_file, state.to_json)
+          File.write(config.global_state_file, {
+            'backup' => result[:backup]
+          }.to_json)
           MongoOplogBackup.log.info "Performed full backup"
-
-          perform_oplog_afterwards = true
         end
-      end
-
-      # Has to be outside the lock
-      if perform_oplog_afterwards
-        # Oplog backup
         perform(:oplog, options)
-      end
-
-    rescue LockError => e
-      if if_not_busy
-        MongoOplogBackup.log.info e.message
-        MongoOplogBackup.log.info 'Not performing backup'
-      else
-        raise
       end
     end
 
