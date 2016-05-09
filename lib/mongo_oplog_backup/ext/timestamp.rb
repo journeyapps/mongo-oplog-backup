@@ -1,4 +1,5 @@
 # Make BSON::Timestamp comparable
+require 'date'
 require 'bson'
 
 module MongoOplogBackup::Ext
