@@ -15,6 +15,8 @@ opts = Slop.parse(help: true, strict: true) do
 
     on :f, :file, 'Configuration file for common defaults', argument: :required
     on :ssl, "Connect to a mongod instance over an SSL connection"
+    on :sslAllowInvalidCertificates, "Allow connections to a mongod instance with an invalid certificate"
+    on :sslCAFile, "Specifies a Certificate Authority file for validating the SSL certificate provided by the mongod instance.", argument: :required
     on :host, "Specifies a resolvable hostname for the mongod that you wish to backup.", default: 'localhost', argument: :required
     on :port, "Specifies the port that mongod is running on", default: '27017', argument: :required
     on :u, :username, "Specifies a username to authenticate to the MongoDB instance, if your database requires authentication. Use in conjunction with the --password option to supply a password.", argument: :required
@@ -24,13 +26,15 @@ opts = Slop.parse(help: true, strict: true) do
       dir = opts[:dir] || 'backup'
       config_opts = {
         dir: dir,
-        ssl: opts.ssl?
+        ssl: opts.ssl?,
+        sslAllowInvalidCertificates: opts.sslAllowInvalidCertificates?
       }
       config_opts[:file] = opts[:file]
       config_opts[:host] = opts[:host]
       config_opts[:port] = opts[:port]
       config_opts[:username] = opts[:username]
       config_opts[:password] = opts[:password]
+      config_opts[:sslCAFile] = opts[:sslCAFile]
 
       mode = :auto
       if opts.full?

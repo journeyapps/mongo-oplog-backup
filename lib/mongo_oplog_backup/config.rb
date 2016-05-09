@@ -15,6 +15,8 @@ module MongoOplogBackup
       unless file.nil?
         conf = YAML.load_file(file)
         options[:ssl] = conf["ssl"] unless conf["ssl"].nil?
+        options[:sslAllowInvalidCertificates] = conf["sslAllowInvalidCertificates"] unless conf["sslAllowInvalidCertificates"].nil?
+        options[:sslCAFile] = conf["sslCAFile"] unless conf["sslCAFile"].nil?
         options[:host] = conf["host"] unless conf["host"].nil?
         options[:port] = conf["port"].to_s unless conf["port"].nil?
         options[:username] = conf["username"] unless conf["username"].nil?
@@ -31,7 +33,8 @@ module MongoOplogBackup
     def command_line_options
       args = []
       args << '--ssl' if options[:ssl]
-      [:host, :port, :username, :password].each do |option|
+      args << '--sslAllowInvalidCertificates' if options[:sslAllowInvalidCertificates]
+      [:host, :port, :username, :password, :sslCAFile].each do |option|
         args += ["--#{option}", options[option].strip] if options[option]
       end
 
