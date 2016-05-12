@@ -71,17 +71,26 @@ module MongoOplogBackup
     def run
       @status = Open3.popen3(*command) do |stdin, stdout, stderr, wait_thr|
         stdin.close_write
-        until all_eof([stdout, stderr])
-          read_available_data(stdout) do |data|
-            @out_blocks.each do |block|
-              block.call(data)
-            end
+        # until all_eof([stdout, stderr])
+        still_open = [stdout, stderr]
+        until still_open.empty?
+          handles = IO.select(still_open, nil, nil, 0.001)
+
+          unless handles.nil?
+            read_available_data(stdout) do |data|
+              @out_blocks.each do |block|
+                block.call(data)
+              end
+            end if handles[0].include?(stdout)
+
+            read_available_data(stderr) do |data|
+              @err_blocks.each do |block|
+                block.call(data)
+              end
+            end if handles[0].include?(stderr)
           end
-          read_available_data(stderr) do |data|
-            @err_blocks.each do |block|
-              block.call(data)
-            end
-          end
+
+          still_open.delete_if { |s| s.closed? }
           sleep 0.001
         end
 
@@ -111,14 +120,10 @@ module MongoOplogBackup
     BLOCK_SIZE = 1024
 
     def read_available_data(io, &block)
-      if io.ready?
-        data = io.read_nonblock(BLOCK_SIZE)
-        block.call data
-      end
-    end
-
-    def all_eof(files)
-      files.find { |f| !f.eof }.nil?
+      data = io.read_nonblock(BLOCK_SIZE)
+      block.call data
+    rescue EOFError
+      io.close
     end
   end
 end

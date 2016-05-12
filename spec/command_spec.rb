@@ -24,7 +24,7 @@ describe MongoOplogBackup::Command do
   it 'should log' do
     io = StringIO.new
     logger = Logger.new io
-    MongoOplogBackup::Command.execute(['ruby', '-e', 'puts "BAR"; $stderr.puts "FOO"'], logger: logger)
+    MongoOplogBackup::Command.execute(['ruby', '-e', 'puts "BAR"; $stdout.flush; $stderr.puts "FOO"'], logger: logger)
     io.rewind
     log = io.read
     log.should =~ /D, \[.+\] DEBUG -- : BAR\nE, \[.+\] ERROR -- : FOO\n/
