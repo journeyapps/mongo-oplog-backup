@@ -74,11 +74,11 @@ module MongoOplogBackup
     end
 
     def mongodump(*args)
-      exec(['/usr/local/Cellar/mongodb/3.2.11/bin/mongodump'] + command_line_options + args.flatten)
+      exec(['mongodump'] + command_line_options + args.flatten)
     end
 
     def mongo(db, script)
-      exec(['/usr/local/Cellar/mongodb/3.2.11/bin/mongo'] + command_line_options + ['--quiet', '--norc', script])
+      exec(['mongo'] + command_line_options + ['--quiet', '--norc', script])
     end
 
     def command_string(cmd)
