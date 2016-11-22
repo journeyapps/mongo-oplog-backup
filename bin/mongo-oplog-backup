@@ -63,7 +63,7 @@ opts = Slop.parse(help: true, strict: true) do
       MongoOplogBackup::Oplog.merge_backup(dir)
       puts
       puts "Restore the backup with: "
-      puts "mongorestore [--drop] --oplogReplay #{File.join(dir, 'dump')}"
+      puts "mongorestore [--drop] [--gzip] --oplogReplay #{File.join(dir, 'dump')}"
     end
   end
 end
