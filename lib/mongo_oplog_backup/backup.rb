@@ -53,9 +53,10 @@ module MongoOplogBackup
 
       query = ['--query', "{ts : { $gte : { $timestamp : { t : #{start_at.seconds}, i : #{start_at.increment} } } }}"]
 
-      config.mongodump(['--out', config.oplog_dump_folder,
-        '--db', 'local', '--collection', 'oplog.rs'] +
-        query)
+      dump_args = ['--out', config.oplog_dump_folder, '--db', 'local', '--collection', 'oplog.rs']
+      dump_args += query
+      dump_args << '--gzip' if config.use_compression?
+      config.mongodump(dump_args)
 
       unless File.exists? config.oplog_dump
         raise "mongodump failed"
@@ -89,6 +90,7 @@ module MongoOplogBackup
         result[:empty] = true
       else
         outfile = "oplog-#{first}-#{last}.bson"
+        outfile += '.gz' if config.use_compression?
         full_path = File.join(backup_folder, outfile)
         FileUtils.mkdir_p backup_folder
         FileUtils.mv config.oplog_dump, full_path
@@ -124,7 +126,9 @@ module MongoOplogBackup
         raise "Backup folder '#{backup_folder}' already exists; not performing backup."
       end
       dump_folder = File.join(backup_folder, 'dump')
-      result = config.mongodump('--out', dump_folder)
+      dump_args = ['--out', dump_folder]
+      dump_args << '--gzip' if config.use_compression?
+      result = config.mongodump(dump_args)
       unless File.directory? dump_folder
         MongoOplogBackup.log.error 'Backup folder does not exist'
         raise 'Full backup failed'

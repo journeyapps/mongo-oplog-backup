@@ -1,10 +1,18 @@
+require 'zlib'
 module MongoOplogBackup
   module Oplog
     def self.each_document(filename)
-      File.open(filename, 'rb') do |stream|
+      yield_bson_document = Proc.new do |stream|
         while !stream.eof?
+          # FIXME: Since bson4 from_bson takes a ByteArray instead of a StringIO
           yield BSON::Document.from_bson(stream)
         end
+      end
+
+      if filename.end_with?('.gz')
+        Zlib::GzipReader.open(filename, &yield_bson_document)
+      else
+        File.open(filename, 'rb', &yield_bson_document)
       end
     end
 
@@ -18,7 +26,7 @@ module MongoOplogBackup
       timestamps
     end
 
-    FILENAME_RE = /\/oplog-(\d+):(\d+)-(\d+):(\d+)\.bson\z/
+    FILENAME_RE = /\/oplog-(\d+):(\d+)-(\d+):(\d+)\.bson(?:\.gz)?\z/
 
     def self.timestamps_from_filename filename
       match = FILENAME_RE.match(filename)
@@ -93,7 +101,7 @@ module MongoOplogBackup
     end
 
     def self.find_oplogs(dir)
-      files = Dir.glob(File.join(dir, 'oplog-*.bson'))
+      files = Dir.glob(File.join(dir, 'oplog-*.bson*'))
       files.keep_if {|name| name =~ FILENAME_RE}
       files.sort! {|a, b| timestamps_from_filename(a)[:first] <=> timestamps_from_filename(b)[:first]}
       files

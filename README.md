@@ -14,7 +14,7 @@ a single file that can be stored on your preferred medium, for example Amazon S3
 or an FTP site. This project only provides the tools to produce the backup files,
 and it's up to you to transfer it to a backup medium.
 
-Interally the `mongodump` command is used for the backup operations. Initially
+Internally the `mongodump` command is used for the backup operations. Initially
 a full dump is performed, after which incremetal backups are performed by backing
 up new sections of the oplog. Only the standard BSON format from mongodump is used.
 

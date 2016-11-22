@@ -14,6 +14,7 @@ module MongoOplogBackup
       options = {}
       unless file.nil?
         conf = YAML.load_file(file)
+        options[:gzip] = conf["gzip"] unless conf["gzip"].nil?
         options[:ssl] = conf["ssl"] unless conf["ssl"].nil?
         options[:sslAllowInvalidCertificates] = conf["sslAllowInvalidCertificates"] unless conf["sslAllowInvalidCertificates"].nil?
         options[:sslCAFile] = conf["sslCAFile"] unless conf["sslCAFile"].nil?
@@ -28,6 +29,10 @@ module MongoOplogBackup
 
     def backup_dir
       options[:dir]
+    end
+
+    def use_compression?
+      !!options[:gzip]
     end
 
     def command_line_options
@@ -48,7 +53,11 @@ module MongoOplogBackup
     end
 
     def oplog_dump
-      File.join(oplog_dump_folder, 'local/oplog.rs.bson')
+      if use_compression?
+        File.join(oplog_dump_folder, 'local/oplog.rs.bson.gz')
+      else
+        File.join(oplog_dump_folder, 'local/oplog.rs.bson')
+      end
     end
 
     def global_state_file
@@ -65,11 +74,11 @@ module MongoOplogBackup
     end
 
     def mongodump(*args)
-      exec(['mongodump'] + command_line_options + args.flatten)
+      exec(['/usr/local/Cellar/mongodb/3.2.11/bin/mongodump'] + command_line_options + args.flatten)
     end
 
     def mongo(db, script)
-      exec(['mongo'] + command_line_options + ['--quiet', '--norc', script])
+      exec(['/usr/local/Cellar/mongodb/3.2.11/bin/mongo'] + command_line_options + ['--quiet', '--norc', script])
     end
 
     def command_string(cmd)
