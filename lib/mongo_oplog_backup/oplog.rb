@@ -74,6 +74,10 @@ module MongoOplogBackup
           Oplog.each_document(filename) do |doc|
             timestamp = doc['ts']
             first_file_timestamp = timestamp if first_file_timestamp.nil?
+
+            # gzip stores the mtime in the header, so we set it explicity for consistency between runs.
+            output.mtime = first_file_timestamp.seconds if output.mtime.to_i == 0
+
             if !last_timestamp.nil? && timestamp <= last_timestamp
               skipped += 1
             elsif !last_file_timestamp.nil? && timestamp <= last_file_timestamp
@@ -123,9 +127,7 @@ module MongoOplogBackup
 
     def self.gzip_fingerprint filename
       bytes = File.read(filename, 2, 0)
-      r = bytes[0] == "\x1f".force_encoding('BINARY') && bytes[1] == "\x8b".force_encoding('BINARY')
-      puts "#{filename} gzip? #{r}"
-      r
+      bytes[0] == "\x1f".force_encoding('BINARY') && bytes[1] == "\x8b".force_encoding('BINARY')
     end
 
   end
