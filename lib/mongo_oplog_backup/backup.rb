@@ -106,11 +106,17 @@ module MongoOplogBackup
       result
     end
 
+    # Because https://jira.mongodb.org/browse/SERVER-18643
+    # Mongo shell warns (in stdout) about self-signed certs, regardless of 'allowInvalidCertificates' option.
+    def strip_warnings_which_should_be_in_stderr_anyway data
+      data.gsub(/^.*[thread\d.*].* certificate.*$/,'')
+    end
+
     def latest_oplog_timestamp
       script = File.expand_path('../../oplog-last-timestamp.js', File.dirname(__FILE__))
       result_text = config.mongo('admin', script).standard_output
       begin
-        response = JSON.parse(result_text)
+        response = JSON.parse(strip_warnings_which_should_be_in_stderr_anyway(result_text))
         return nil unless response['position']
         BSON::Timestamp.from_json(response['position'])
       rescue JSON::ParserError => e
@@ -200,6 +206,5 @@ module MongoOplogBackup
         nil
       end
     end
-
   end
 end
