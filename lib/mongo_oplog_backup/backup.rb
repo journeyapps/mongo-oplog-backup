@@ -163,7 +163,7 @@ module MongoOplogBackup
       end
 
       if mode == :oplog
-        raise "Unknown backup position - cannot perform oplog backup." unless have_backup
+        raise "Unknown backup position - cannot perform oplog backup. Have you completed a full backup?" unless have_backup
         MongoOplogBackup.log.info "Performing incremental oplog backup"
         lock(File.join(backup_folder, 'backup.lock')) do
           result = backup_oplog
