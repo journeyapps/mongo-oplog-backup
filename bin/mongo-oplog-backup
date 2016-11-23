@@ -14,6 +14,7 @@ opts = Slop.parse(help: true, strict: true) do
     on :oplog, 'Force oplog backup'
 
     on :f, :file, 'Configuration file for common defaults', argument: :required
+    on :gzip, "Use gzip compression"
     on :ssl, "Connect to a mongod instance over an SSL connection"
     on :sslAllowInvalidCertificates, "Allow connections to a mongod instance with an invalid certificate"
     on :sslCAFile, "Specifies a Certificate Authority file for validating the SSL certificate provided by the mongod instance.", argument: :required
@@ -26,6 +27,7 @@ opts = Slop.parse(help: true, strict: true) do
       dir = opts[:dir] || 'backup'
       config_opts = {
         dir: dir,
+        gzip: opts.gzip?,
         ssl: opts.ssl?,
         sslAllowInvalidCertificates: opts.sslAllowInvalidCertificates?
       }
@@ -61,7 +63,7 @@ opts = Slop.parse(help: true, strict: true) do
       MongoOplogBackup::Oplog.merge_backup(dir)
       puts
       puts "Restore the backup with: "
-      puts "mongorestore [--drop] --oplogReplay #{File.join(dir, 'dump')}"
+      puts "mongorestore [--drop] [--gzip] --oplogReplay #{File.join(dir, 'dump')}"
     end
   end
 end

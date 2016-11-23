@@ -1,10 +1,18 @@
+require 'zlib'
 module MongoOplogBackup
   module Oplog
     def self.each_document(filename)
-      File.open(filename, 'rb') do |stream|
+      yield_bson_document = Proc.new do |stream|
         while !stream.eof?
+          # FIXME: Since bson4, from_bson takes a ByteArray instead of a StringIO
           yield BSON::Document.from_bson(stream)
         end
+      end
+
+      if gzip_fingerprint(filename)
+        Zlib::GzipReader.open(filename, &yield_bson_document)
+      else
+        File.open(filename, 'rb', &yield_bson_document)
       end
     end
 
@@ -18,7 +26,7 @@ module MongoOplogBackup
       timestamps
     end
 
-    FILENAME_RE = /\/oplog-(\d+):(\d+)-(\d+):(\d+)\.bson\z/
+    FILENAME_RE = /\/oplog-(\d+):(\d+)-(\d+):(\d+)\.bson(?:\.gz)?\z/
 
     def self.timestamps_from_filename filename
       match = FILENAME_RE.match(filename)
@@ -38,8 +46,9 @@ module MongoOplogBackup
     def self.merge(target, source_files, options={})
       limit = options[:limit] # TODO: use
       force = options[:force]
+      compress = !!options[:gzip]
 
-      File.open(target, 'wb') do |output|
+      process_output = Proc.new do |output|
         last_timestamp = nil
         first = true
 
@@ -65,6 +74,10 @@ module MongoOplogBackup
           Oplog.each_document(filename) do |doc|
             timestamp = doc['ts']
             first_file_timestamp = timestamp if first_file_timestamp.nil?
+
+            # gzip stores the mtime in the header, so we set it explicity for consistency between runs.
+            output.mtime = first_file_timestamp.seconds if output.mtime.to_i == 0
+
             if !last_timestamp.nil? && timestamp <= last_timestamp
               skipped += 1
             elsif !last_file_timestamp.nil? && timestamp <= last_file_timestamp
@@ -90,10 +103,15 @@ module MongoOplogBackup
           first = false
         end
       end
+      if (compress)
+        Zlib::GzipWriter.open(target, &process_output)
+      else
+        File.open(target, 'wb', &process_output)
+      end
     end
 
     def self.find_oplogs(dir)
-      files = Dir.glob(File.join(dir, 'oplog-*.bson'))
+      files = Dir.glob(File.join(dir, 'oplog-*.bson*'))
       files.keep_if {|name| name =~ FILENAME_RE}
       files.sort! {|a, b| timestamps_from_filename(a)[:first] <=> timestamps_from_filename(b)[:first]}
       files
@@ -101,9 +119,15 @@ module MongoOplogBackup
 
     def self.merge_backup(dir)
       oplogs = find_oplogs(dir)
-      target = File.join(dir, 'dump', 'oplog.bson')
+      compress_target = oplogs.any? { |o| o.end_with?('.gz') }
+      target = File.join(dir, 'dump', 'oplog.bson') # Mongorestore expects this filename, without a gzip suffix.
       FileUtils.mkdir_p(File.join(dir, 'dump'))
-      merge(target, oplogs)
+      merge(target, oplogs, {gzip: compress_target})
+    end
+
+    def self.gzip_fingerprint filename
+      bytes = File.read(filename, 2, 0)
+      bytes[0] == "\x1f".force_encoding('BINARY') && bytes[1] == "\x8b".force_encoding('BINARY')
     end
 
   end
