@@ -58,4 +58,14 @@ describe MongoOplogBackup do
     timestamps.first.should == first
     timestamps.last.should == last
   end
+
+
+  it "should ignore non-critical warnings (eg. about self-signed certs) from mongo shell" do
+    data = <<FAUXWARNINGS
+2016-11-23T09:34:58.721-0500 W NETWORK  [thread1] SSL peer certificate validation failed: self signed certificate
+2016-11-23T09:34:58.721-0500 W NETWORK  [thread1] The server certificate does not match the host name datanode3.example.com
+{"position":{"t":1479902357,"i":1}}
+FAUXWARNINGS
+    expect { JSON.parse(backup.strip_warnings_which_should_be_in_stderr_anyway(data)) }.to_not raise_error
+  end
 end
