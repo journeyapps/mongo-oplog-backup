@@ -18,6 +18,9 @@ opts = Slop.parse(help: true, strict: true) do
     on :ssl, "Connect to a mongod instance over an SSL connection"
     on :sslAllowInvalidCertificates, "Allow connections to a mongod instance with an invalid certificate"
     on :sslCAFile, "Specifies a Certificate Authority file for validating the SSL certificate provided by the mongod instance.", argument: :required
+    on :sslPEMKeyFile, "Specifies a SSL client certificate and private key for authenticating with the mongod instance.", argument: :required
+    on :sslPEMKeyPassword, "Specifies the password used to open the sslPEMKeyFile, if required.", argument: :required
+    on :authenticationDatabase, "Specifies the database to authenticate against.  This can be used to override the default selection.", argument: :required
     on :host, "Specifies a resolvable hostname for the mongod that you wish to backup.", default: 'localhost', argument: :required
     on :port, "Specifies the port that mongod is running on", default: '27017', argument: :required
     on :u, :username, "Specifies a username to authenticate to the MongoDB instance, if your database requires authentication. Use in conjunction with the --password option to supply a password.", argument: :required
@@ -37,6 +40,9 @@ opts = Slop.parse(help: true, strict: true) do
       config_opts[:username] = opts[:username]
       config_opts[:password] = opts[:password]
       config_opts[:sslCAFile] = opts[:sslCAFile]
+      config_opts[:sslPEMKeyFile] = opts[:sslPEMKeyFile]
+      config_opts[:sslPEMKeyPassword] = opts[:sslPEMKeyPassword]
+      config_opts[:authenticationDatabase] = opts[:authenticationDatabase]
 
       mode = :auto
       if opts.full?

@@ -41,6 +41,15 @@ describe MongoOplogBackup::Ext::Timestamp do
     ts.as_json.should == json
   end
 
+  it 'should handle extended-json timestamp format' do
+    json = { "t" => 1408004593, "i" => 20}
+    extendedjson = {"$timestamp" => json}
+    ts = BSON::Timestamp.from_json(extendedjson)
+    ts.seconds.should == 1408004593
+    ts.increment.should == 20
+    ts.as_json.should == json
+  end
+
   it 'should define to_s' do
     ts = BSON::Timestamp.new(1408004593, 2)
     ts.to_s.should == '1408004593:2'
