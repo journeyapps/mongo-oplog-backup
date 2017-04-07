@@ -81,6 +81,10 @@ module MongoOplogBackup
       exec(['mongo'] + command_line_options + ['--quiet', '--norc', script])
     end
 
+    def mongorestore(*args)
+      exec(['mongorestore'] + command_line_options + args.flatten)
+    end
+
     def command_string(cmd)
       previous = nil
       filtered = cmd.map do |token|
