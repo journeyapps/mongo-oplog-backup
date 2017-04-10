@@ -66,4 +66,60 @@ opts = Slop.parse(help: true, strict: true) do
       puts "mongorestore [--drop] [--gzip] --oplogReplay #{File.join(dir, 'dump')}"
     end
   end
+
+  command 'restore' do
+  banner 'Usage: mongo-oplog-backup restore [options]'
+    on :v, :verbose, 'Enable verbose mode'
+    on :d, :dir, "Directory containing the backup to restore. Must contain a 'dump' folder.", argument: :required
+    on :full, 'Do a full restore, followed by an oplog restore.'
+    on :oplog, 'Restore only the oplogs. Assumes a manual restore has already been done.'
+
+    on :gzip, "Use gzip compression. This option is ignored by Oplog mode, because it autodetects."
+    on :ssl, "Connect to a mongod instance over an SSL connection"
+    on :sslAllowInvalidCertificates, "Allow connections to a mongod instance with an invalid certificate"
+    on :sslCAFile, "Specifies a Certificate Authority file for validating the SSL certificate provided by the mongod instance.", argument: :required
+    on :host, "Specifies a resolvable hostname for the mongod that you wish to backup.", default: 'localhost', argument: :required
+    on :port, "Specifies the port that mongod is running on", default: '27017', argument: :required
+    on :u, :username, "Specifies a username to authenticate to the MongoDB instance, if your database requires authentication. Use in conjunction with the --password option to supply a password.", argument: :required
+    on :p, :password, "Specifies a password to authenticate to the MongoDB instance. Use in conjunction with the --username option to supply a username. Note. the password will not be prompted for, so must be passed as an argument", argument: :required
+
+    on :noIndexRestore, "Don't restore indexes."
+    on :oplogLimit, "Only include oplog entries before the provided Timestamp: <seconds>[:ordinal]", argument: :required
+    on :oplogStartAt, "Ignore oplog batches before the provided Timestamp: <seconds>[:ordinal]. This is useful for resuming a restore after an error.", argument: :required
+
+    run do |opts, args|
+      dir = opts[:dir]
+      raise ArgumentError, 'dir must be specified' unless dir
+      raise ArgumentError, 'dir must contain a dump subfolder' unless File.directory?(File.join(dir, 'dump'))
+      config_opts = {
+        dir: dir,
+        ssl: opts.ssl?,
+        gzip: opts.gzip?,
+        sslAllowInvalidCertificates: opts.sslAllowInvalidCertificates?,
+        noIndexRestore: opts.noIndexRestore?
+      }
+      config_opts[:host] = opts[:host]
+      config_opts[:port] = opts[:port]
+      config_opts[:username] = opts[:username]
+      config_opts[:password] = opts[:password]
+      config_opts[:sslCAFile] = opts[:sslCAFile]
+      config_opts[:oplogLimit] = opts[:oplogLimit]
+      config_opts[:oplogStartAt] = opts[:oplogStartAt]
+
+      if opts.full?
+        mode = :full
+      elsif opts.oplog?
+        mode = :oplog
+      else
+        raise ArgumentError, "either full or oplog must be specified"
+      end
+
+      restore_opts = {}
+      restore_opts[:oplogLimit] = opts[:oplogLimit]
+
+      config = MongoOplogBackup::Config.new(config_opts)
+      restore = MongoOplogBackup::Restore.new(config)
+      restore.perform(mode, restore_opts)
+    end
+  end
 end

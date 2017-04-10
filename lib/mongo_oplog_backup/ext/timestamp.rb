@@ -25,6 +25,15 @@ module MongoOplogBackup::Ext
       def from_json(data)
         self.new(data['t'], data['i'])
       end
+
+      # Accepts: <seconds>[:ordinal]
+      def from_string(string)
+        match = /(\d+)(?::(\d+))?/.match(string)
+        return nil unless match
+        s1 = match[1].to_i
+        i1 = match[2].to_i
+        self.new(s1,i1)
+      end
     end
 
   end

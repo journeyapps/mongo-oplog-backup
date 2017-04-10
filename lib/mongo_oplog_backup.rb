@@ -8,6 +8,7 @@ require 'mongo_oplog_backup/command'
 require 'mongo_oplog_backup/config'
 require 'mongo_oplog_backup/backup'
 require 'mongo_oplog_backup/oplog'
+require 'mongo_oplog_backup/restore'
 
 module MongoOplogBackup
   def self.log
