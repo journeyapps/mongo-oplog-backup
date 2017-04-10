@@ -25,7 +25,12 @@ module MongoOplogBackup
     def restore_oplogs(dir, options={})
       default_restore_args = ['--stopOnError', '--oplogReplay']
       default_restore_args << '--noIndexRestore' if !!config.options[:noIndexRestore]
-      default_restore_args += ['oplogLimit', options[:oplogLimit]] if options[:oplogLimit]
+      if options[:oplogLimit]
+        default_restore_args += ['--oplogLimit', options[:oplogLimit]]
+        oplog_limit = BSON::Timestamp.from_string(options[:oplogLimit])
+      end
+
+      oplog_start_at = BSON::Timestamp.from_string(config.options[:oplogStartAt]) if config.options[:oplogStartAt]
 
       source_files = Oplog.find_oplogs(dir)
 
@@ -34,6 +39,21 @@ module MongoOplogBackup
       MongoOplogBackup.log.debug "Starting oplog restore..."
       source_files.each do |filename|
         # TODO: mongorestore 3.4 supports --oplogFile
+
+        unless oplog_start_at.nil?
+          timestamps = Oplog.timestamps_from_filename(filename)
+          if timestamps[:last] <= oplog_start_at
+            MongoOplogBackup.log.debug "Skipping batch: #{filename}. Last op in batch (ts: #{timestamps[:last]}) is before oplogStartAt: #{oplog_start_at}"
+            next
+          end
+        end
+        unless oplog_limit.nil?
+          timestamps = Oplog.timestamps_from_filename(filename)
+          if timestamps[:first] > oplog_limit
+            MongoOplogBackup.log.debug "Skipping batch: #{filename}. First op in batch (ts: #{timestamps[:first]}) is after oplogLimit: #{oplog_limit}"
+            next
+          end
+        end
 
         temp_file_path = create_temp_oplog_dir(dir, filename)
         oplog_dir_path = File.dirname(temp_file_path)
@@ -104,14 +124,15 @@ module MongoOplogBackup
     end
 
     def create_temp_oplog_dir dir, filename
-      temp_dir = File.join(dir, 'tmp-restore', filename)
+      temp_dir = File.join(dir, 'tmp-restore', File.basename(filename))
       temp_file_path = File.join(temp_dir, 'oplog.bson')
       FileUtils.mkdir_p(temp_dir)
       File.link(filename, temp_file_path)
       return temp_file_path
     rescue Errno::EEXIST => e
       # Probably, 'new_name' already exists when creating link.
-      MongoOplogBackup.log.warn("Cannot create temporary oplog.bson link: #{e.message}")
+      MongoOplogBackup.log.warn("Temporary oplog.bson link already exists: #{e.message}. Assuming valid.")
+      return temp_file_path
     rescue SystemCallError => e
       MongoOplogBackup.log.error("Setup error for oplog '#{filename}' in '#{temp_file_path}")
       raise

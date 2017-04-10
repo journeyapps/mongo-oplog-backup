@@ -85,6 +85,7 @@ opts = Slop.parse(help: true, strict: true) do
 
     on :noIndexRestore, "Don't restore indexes."
     on :oplogLimit, "Only include oplog entries before the provided Timestamp: <seconds>[:ordinal]", argument: :required
+    on :oplogStartAt, "Ignore oplog batches before the provided Timestamp: <seconds>[:ordinal]. This is useful for resuming a restore after an error.", argument: :required
 
     run do |opts, args|
       dir = opts[:dir]
@@ -103,6 +104,7 @@ opts = Slop.parse(help: true, strict: true) do
       config_opts[:password] = opts[:password]
       config_opts[:sslCAFile] = opts[:sslCAFile]
       config_opts[:oplogLimit] = opts[:oplogLimit]
+      config_opts[:oplogStartAt] = opts[:oplogStartAt]
 
       if opts.full?
         mode = :full
