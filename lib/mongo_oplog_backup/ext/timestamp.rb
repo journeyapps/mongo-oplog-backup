@@ -21,8 +21,9 @@ module MongoOplogBackup::Ext
     end
 
     module ClassMethods
-      # Accepts {'t' => seconds, 'i' => increment}
+      # Accepts {'t' => seconds, 'i' => increment} or {'$timestamp' => {'t' => seconds, 'i' => increment}}
       def from_json(data)
+        data = data['$timestamp'] if data['$timestamp']
         self.new(data['t'], data['i'])
       end
 

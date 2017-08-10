@@ -18,6 +18,9 @@ module MongoOplogBackup
         options[:ssl] = conf["ssl"] unless conf["ssl"].nil?
         options[:sslAllowInvalidCertificates] = conf["sslAllowInvalidCertificates"] unless conf["sslAllowInvalidCertificates"].nil?
         options[:sslCAFile] = conf["sslCAFile"] unless conf["sslCAFile"].nil?
+        options[:sslPEMKeyFile] = conf["sslPEMKeyFile"] unless conf["sslPEMKeyFile"].nil?
+        options[:sslPEMKeyPassword] = conf["sslPEMKeyPassword"] unless conf["sslPEMKeyPassword"].nil?
+        options[:authenticationDatabase] = conf["authenticationDatabase"] unless conf["authenticationDatabase"].nil?
         options[:host] = conf["host"] unless conf["host"].nil?
         options[:port] = conf["port"].to_s unless conf["port"].nil?
         options[:username] = conf["username"] unless conf["username"].nil?
@@ -39,11 +42,18 @@ module MongoOplogBackup
       args = []
       args << '--ssl' if options[:ssl]
       args << '--sslAllowInvalidCertificates' if options[:sslAllowInvalidCertificates]
-      [:host, :port, :username, :password, :sslCAFile].each do |option|
+      [:host, :port, :username, :password, :sslCAFile, :sslPEMKeyFile, :sslPEMKeyPassword].each do |option|
         args += ["--#{option}", options[option].strip] if options[option]
       end
+      
+      if options[:authenticationDatabase]
+        args += ['--authenticationDatabase', options[:authenticationDatabase]]
+      else
+        args += ['--authenticationDatabase', 'admin'] if options[:username] && !options[:sslPEMKeyFile]
+        args += ['--authenticationDatabase', '$external'] if options[:sslPEMKeyFile]
+      end
 
-      args += ['--authenticationDatabase', 'admin'] if options[:username]
+      args += ['--authenticationMechanism', 'MONGODB-X509'] if options[:sslPEMKeyFile]
 
       args
     end
@@ -78,7 +88,7 @@ module MongoOplogBackup
     end
 
     def mongo(db, script)
-      exec(['mongo'] + command_line_options + ['--quiet', '--norc', script])
+      exec(['mongo'] + command_line_options + ['--quiet', '--norc', db, script])
     end
 
     def mongorestore(*args)
