@@ -73,6 +73,24 @@ opts = Slop.parse(help: true, strict: true) do
     end
   end
 
+  command 'rotate' do
+  banner "Delete old backup sets.\nUsage: mongo-oplog-backup rotate [options]"
+    on :v, :verbose, "Enable verbose mode"
+    on :d, :dir, "Directory where backup files are stored. Defaults to 'backup'.", argument: :required
+    on :keepDays, "Minimum number of days of backups to keep (recovery point objective). This should be AT LEAST equal to the Full backup schedule.", default: '32', argument: :required
+
+    run do |opts, args|
+      dir = opts[:dir] || 'backup'
+      config_opts = {
+          dir: dir,
+          keepDays: (opts[:keepDays].to_i rescue nil)
+      }
+      config = MongoOplogBackup::Config.new(config_opts)
+      rotate = MongoOplogBackup::Rotate.new(config)
+      rotate.perform
+    end
+  end
+
   command 'restore' do
   banner 'Usage: mongo-oplog-backup restore [options]'
     on :v, :verbose, 'Enable verbose mode'

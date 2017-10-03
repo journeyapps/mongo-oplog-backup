@@ -66,6 +66,17 @@ That said, there have been bugs in the past that caused the oplog to not be idem
 in some edge cases. Therefore it is recommended to stop the secondary before performing
 a full backup.
 
+## Rotation
+
+Older backups can be automatically deleted with `mongo-oplog-backup rotate`.
+
+For example, given the full backup schedule above and a recovery point objective of 4 weeks, any full backup sets
+older than 4 weeks (excluding the currently active backup set and the previous backup set) can be deleted.
+
+A sample cron script to clean-up any older backups about an hour before the weekly full backup:
+
+   0 23 * * 0 /path/to/ruby/bin/mongo-oplog-backup rotate --dir /path/to/backup/location --keep_days=28 >> /path/to/backup.log
+
 ## To restore
 
     mongo-oplog-backup merge --dir mybackup/backup-<timestamp>
