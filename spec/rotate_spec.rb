@@ -41,5 +41,30 @@ describe MongoOplogBackup::Rotate do
 
   end
 
+  context 'as a dry run' do
+    before do
+      Timecop.freeze(Time.utc(2017,9,1,23,0,0))
+    end
+    after do
+      Timecop.return
+    end
+
+    let(:config) do
+      {
+        dir: SPEC_TMP,
+        dryRun: true
+      }
+    end
+    let(:rotate) { MongoOplogBackup::Rotate.new(MongoOplogBackup::Config.new(config)) }
+
+    it 'does not delete anything.' do
+      rotate.perform
+
+      expect( File.exist?(File.join(SPEC_TMP, 'backup-1501538704:28' )) ).to eq(true)
+      expect( File.exist?(File.join(SPEC_TMP, 'backup-1504217100:18' )) ).to eq(true)
+      expect( File.exist?(File.join(SPEC_TMP, 'backup-1498860301:15' )) ).to eq(true)
+    end
+  end
+
 
 end

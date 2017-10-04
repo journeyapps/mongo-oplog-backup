@@ -9,6 +9,7 @@ module MongoOplogBackup
 
     def initialize(config)
       @config = config
+      @dry_run = !!@config.options[:dryRun]
       @backup_list = Pathname.new(@config.backup_dir).children.select(&:directory?)
       if @config.options[:keepDays].nil?
         @recovery_point_objective = RECOVERY_POINT_OBJECTIVE
@@ -36,9 +37,9 @@ module MongoOplogBackup
           MongoOplogBackup.log.info "Too few backup sets to automatically rotate."
         elsif @backup_list.count > KEEP_MINIMUM_SETS
           filter_for_deletion(@backup_list).each do |path|
-            MongoOplogBackup.log.info "Deleting #{path}."
+            MongoOplogBackup.log.info "#{@dry_run ? '[DRYRUN] Would delete' : 'Deleting'} #{path}."
             begin
-              FileUtils.remove_entry_secure(path)
+              FileUtils.remove_entry_secure(path) unless @dry_run
             rescue StandardError => e
               MongoOplogBackup.log.error "Delete failed: #{e.message}"
             end

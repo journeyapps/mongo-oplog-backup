@@ -76,6 +76,8 @@ older than 4 weeks (excluding the currently active backup set and the previous b
 A sample cron script to clean-up any older backups about an hour before the weekly full backup:
 
    0 23 * * 0 /path/to/ruby/bin/mongo-oplog-backup rotate --dir /path/to/backup/location --keep_days=28 >> /path/to/backup.log
+   
+It is strongly recommended to use the `dryRun` option to thoroughly test your particular configuration and schedule. 
 
 ## To restore
 

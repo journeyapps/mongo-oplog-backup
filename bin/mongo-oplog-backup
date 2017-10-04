@@ -78,12 +78,14 @@ opts = Slop.parse(help: true, strict: true) do
     on :v, :verbose, "Enable verbose mode"
     on :d, :dir, "Directory where backup files are stored. Defaults to 'backup'.", argument: :required
     on :keepDays, "Minimum number of days of backups to keep (recovery point objective). This should be AT LEAST equal to the Full backup schedule.", default: '32', argument: :required
+    on :dryRun, "Perform a trial run with no changes made."
 
     run do |opts, args|
       dir = opts[:dir] || 'backup'
       config_opts = {
           dir: dir,
-          keepDays: (opts[:keepDays].to_i rescue nil)
+          keepDays: (opts[:keepDays].to_i rescue nil),
+          dryRun: opts.dryRun?
       }
       config = MongoOplogBackup::Config.new(config_opts)
       rotate = MongoOplogBackup::Rotate.new(config)
