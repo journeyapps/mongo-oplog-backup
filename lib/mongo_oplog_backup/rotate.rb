@@ -2,6 +2,7 @@ require 'pathname'
 
 module MongoOplogBackup
   class Rotate
+    include Lockable
     attr_reader :config, :backup_list
     DAY = 86400
     RECOVERY_POINT_OBJECTIVE = 32 * DAY # Longest month + 1
@@ -73,17 +74,6 @@ module MongoOplogBackup
       s1 = match[1].to_i
       i1 = match[2].to_i
       BSON::Timestamp.new(s1,i1)
-    end
-
-    def lock(lockname, &block)
-      File.open(lockname, File::RDWR|File::CREAT, 0644) do |file|
-        # Get a non-blocking lock
-        got_lock = file.flock(File::LOCK_EX|File::LOCK_NB)
-        if got_lock == false
-          raise LockError, "Failed to acquire lock - another backup may be busy"
-        end
-        yield
-      end
     end
   end
 end

@@ -2,11 +2,9 @@ require 'json'
 require 'fileutils'
 require 'mongo_oplog_backup/oplog'
 
-class LockError < StandardError
-end
-
 module MongoOplogBackup
   class Backup
+    include Lockable
     attr_reader :config, :backup_name
 
     def backup_folder
@@ -31,17 +29,6 @@ module MongoOplogBackup
 
     def write_state(state)
       File.write(state_file, state.to_json)
-    end
-
-    def lock(lockname, &block)
-      File.open(lockname, File::RDWR|File::CREAT, 0644) do |file|
-        # Get a non-blocking lock
-        got_lock = file.flock(File::LOCK_EX|File::LOCK_NB)
-        if got_lock == false
-          raise LockError, "Failed to acquire lock - another backup may be busy"
-        end
-        yield
-      end
     end
 
     def backup_oplog(options={})
