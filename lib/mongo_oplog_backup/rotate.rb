@@ -8,16 +8,17 @@ module MongoOplogBackup
     RECOVERY_POINT_OBJECTIVE = 32 * DAY # Longest month + 1
     KEEP_MINIMUM_SETS = 2 # Current & Previous
 
+    BACKUP_DIR_NAME_FORMAT = /\Abackup-\d+:\d+\z/
+
     def initialize(config)
       @config = config
       @dry_run = !!@config.options[:dryRun]
-      @backup_list = Pathname.new(@config.backup_dir).children.select(&:directory?)
+      @backup_list = find_backup_directories
       if @config.options[:keepDays].nil?
         @recovery_point_objective = RECOVERY_POINT_OBJECTIVE
       else
         @recovery_point_objective = @config.options[:keepDays] * DAY
       end
-
     end
 
     def current_backup_name
@@ -51,12 +52,22 @@ module MongoOplogBackup
       end
     end
 
+    # Lists subdirectories in the backup location that match the backup set naming format and appear to have completed
+    # successfully.
+    # @return [Array<Pathname>] backup directories.
+    def find_backup_directories
+      dirs = Pathname.new(@config.backup_dir).children.select(&:directory?)
+      dirs = dirs.select { |dir| dir.basename.to_s =~ BACKUP_DIR_NAME_FORMAT }
+      dirs = dirs.select { |dir| File.exist?(File.join(dir, 'state.json')) }
+      dirs
+    end
+
     # @param [Array<Pathname>] source_list List of Pathnames for the full backup sets in the backup directory.
-    # @returns [Array<Pathname]
+    # @return [Array<Pathname]
     def filter_for_deletion(source_list)
-      # The most recent dir might not be the active one (eg. if the mongodump fails)
+      source_list = source_list.sort.reverse.drop(KEEP_MINIMUM_SETS) # Keep a minimum number of full backups
+      # The most recent dir might not be the active one (eg. if the mongodump fails). Ensure that it is excluded.
       source_list = source_list.reject { |path| path.basename.to_s == current_backup_name }
-      source_list = source_list.sort.reverse.drop(KEEP_MINIMUM_SETS-1) # Exclude the newest dir (which will be the current or previous backup)
 
       source_list.select {|path| age_of_backup_in_seconds(path.basename) > @recovery_point_objective }
     end

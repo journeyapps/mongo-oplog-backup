@@ -6,10 +6,28 @@ describe MongoOplogBackup::Rotate do
   SPEC_TMP='spec-tmp/backup'
 
   let(:rotate) { MongoOplogBackup::Rotate.new(MongoOplogBackup::Config.new(dir: SPEC_TMP)) }
+  let(:backup_dir) { Pathname.new(SPEC_TMP) }
 
   before(:each) do
     FileUtils.mkdir_p SPEC_TMP
     FileUtils.cp_r Dir['spec/fixtures/rotation/backup/*'], SPEC_TMP
+  end
+
+  describe '#find_backup_directories' do
+    subject { rotate.find_backup_directories }
+
+    it 'excludes directories with unexpected name format' do
+      expect(subject).to_not include(backup_dir.join('ignore-me'))
+    end
+
+    it 'excludes directories from unsuccessful backups' do
+      expect(subject).to_not include(backup_dir.join('backup-1507117250:55'))
+    end
+
+    it 'includes directories from successful backups' do
+      expected = %w(backup-1498860301:15 backup-1501538704:28 backup-1504217100:18).map {|d| backup_dir.join(d) }
+      expect(subject).to eq(expected)
+    end
   end
 
   context 'with defaults' do
@@ -27,8 +45,10 @@ describe MongoOplogBackup::Rotate do
     it 'excludes the current and previous backup set' do
       filtered_list = rotate.filter_for_deletion(rotate.backup_list)
 
-      backup_dir = Pathname.new(SPEC_TMP)
+
       expect(filtered_list).to eq([backup_dir.join('backup-1498860301:15')])
+      # Does not include the incomplete/broken backup job: backup-1507117250:55
+      # Does not include arbitrary other directories
     end
 
     it 'deletes only the correct directory' do
