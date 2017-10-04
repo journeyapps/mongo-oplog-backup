@@ -25,8 +25,10 @@ describe MongoOplogBackup::Rotate do
     end
 
     it 'includes directories from successful backups' do
-      expected = %w(backup-1498860301:15 backup-1501538704:28 backup-1504217100:18).map {|d| backup_dir.join(d) }
-      expect(subject).to eq(expected)
+      expect(subject).to include(backup_dir.join('backup-1498860301:15'))
+      expect(subject).to include(backup_dir.join('backup-1501538704:28'))
+      expect(subject).to include(backup_dir.join('backup-1504217100:18'))
+      expect(subject.count).to eq(3)
     end
   end
 

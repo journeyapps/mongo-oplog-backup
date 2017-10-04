@@ -59,7 +59,7 @@ module MongoOplogBackup
       dirs = Pathname.new(@config.backup_dir).children.select(&:directory?)
       dirs = dirs.select { |dir| dir.basename.to_s =~ BACKUP_DIR_NAME_FORMAT }
       dirs = dirs.select { |dir| File.exist?(File.join(dir, 'state.json')) }
-      dirs
+      dirs.sort
     end
 
     # @param [Array<Pathname>] source_list List of Pathnames for the full backup sets in the backup directory.
