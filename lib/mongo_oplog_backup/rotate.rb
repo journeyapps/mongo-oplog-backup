@@ -55,7 +55,7 @@ module MongoOplogBackup
     def filter_for_deletion(source_list)
       # The most recent dir might not be the active one (eg. if the mongodump fails)
       source_list = source_list.reject { |path| path.basename.to_s == current_backup_name }
-      source_list = source_list.sort.reverse.drop(1) # Exclude the newest dir (which will be the current or previous backup)
+      source_list = source_list.sort.reverse.drop(KEEP_MINIMUM_SETS-1) # Exclude the newest dir (which will be the current or previous backup)
 
       source_list.select {|path| age_of_backup_in_seconds(path.basename) > @recovery_point_objective }
     end
