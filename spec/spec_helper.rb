@@ -49,6 +49,5 @@ RSpec.configure do |config|
   end
 end
 
-require 'moped'
-SESSION = Moped::Session.new([ "127.0.0.1:27017" ])
-SESSION.use 'backup-test'
+require 'mongo'
+CLIENT = Mongo::Client.new([ "127.0.0.1:27017" ], database: 'backup-test')

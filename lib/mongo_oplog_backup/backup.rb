@@ -180,13 +180,12 @@ module MongoOplogBackup
       end
     end
 
-    def latest_oplog_timestamp_moped
+    def latest_oplog_timestamp_mongo
       # Alternative implementation for `latest_oplog_timestamp`
-      require 'moped'
-      session = Moped::Session.new([ "127.0.0.1:27017" ])
-      session.use 'local'
-      oplog = session['oplog.rs']
-      entry = oplog.find.limit(1).sort('$natural' => -1).one
+      require 'mongo'
+      client = Mongo::Client.new([ "127.0.0.1:27017" ], database: 'local')
+      oplog = client['oplog.rs']
+      entry = oplog.find.limit(1).sort('$natural' => -1).first
       if entry
         entry['ts']
       else
