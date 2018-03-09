@@ -50,4 +50,4 @@ RSpec.configure do |config|
 end
 
 require 'mongo'
-CLIENT = Mongo::Client.new([ "127.0.0.1:27017" ], database: 'backup-test')
+CLIENT = Mongo::Client.new([ "127.0.0.1:27017" ], database: 'backup-test', write: {w: 1})

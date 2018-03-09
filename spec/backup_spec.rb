@@ -9,9 +9,7 @@ describe MongoOplogBackup do
 
   before(:all) do
     # We need one entry in the oplog to start with
-    CLIENT.with(write: {w: 1}) do |session|
-      session['test'].insert({a: 1})
-    end
+    CLIENT['test'].insert_one({a: 1})
   end
 
   it 'should get the latest oplog entry' do
@@ -37,11 +35,7 @@ describe MongoOplogBackup do
   it "should perform an oplog backup" do
     first = backup.latest_oplog_timestamp
     first.should_not be_nil
-    CLIENT.with(write: {w: 1}) do |session|
-      5.times do
-        session['test'].insert({a: 1})
-      end
-    end
+    CLIENT['test'].insert_many(Array.new(5, {a:1}))
     last = backup.latest_oplog_timestamp
     FileUtils.mkdir_p backup.backup_folder
     backup.write_state({position: first})
