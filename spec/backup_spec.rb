@@ -1,5 +1,4 @@
 require 'spec_helper'
-require 'moped'
 
 describe MongoOplogBackup do
   it 'should have a version number' do
@@ -10,14 +9,12 @@ describe MongoOplogBackup do
 
   before(:all) do
     # We need one entry in the oplog to start with
-    SESSION.with(safe: true) do |session|
-      session['test'].insert({a: 1})
-    end
+    CLIENT['test'].insert_one({a: 1})
   end
 
   it 'should get the latest oplog entry' do
     ts1 = backup.latest_oplog_timestamp
-    ts2 = backup.latest_oplog_timestamp_moped
+    ts2 = backup.latest_oplog_timestamp_mongo
 
     ts1.should == ts2
   end
@@ -38,11 +35,7 @@ describe MongoOplogBackup do
   it "should perform an oplog backup" do
     first = backup.latest_oplog_timestamp
     first.should_not be_nil
-    SESSION.with(safe: true) do |session|
-      5.times do
-        session['test'].insert({a: 1})
-      end
-    end
+    CLIENT['test'].insert_many(Array.new(5, {a:1}))
     last = backup.latest_oplog_timestamp
     FileUtils.mkdir_p backup.backup_folder
     backup.write_state({position: first})
