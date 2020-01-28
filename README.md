@@ -1,8 +1,14 @@
-# MongoOplogBackup
+# MongoOplogBackup [DEPRECATED]
+
+**This project has been deprecated and is not maintained anymore.** It is recommended to use snapshot-based backups instead, for example on AWS EBS. Snapshots are much faster for full backups as well as restoring. It is even possible to get point-in-time restore capability with snapshots, by combining the data of one snapshot with the oplog from the next one.
+
+The scripts are also likely incompatible with later MongoDB versions.
 
 **Experimental** incremental backup system for MongoDB based on the oplog.
 
-**Not ready for any important data yet. Use at your own risk.**
+**Not ready for any important data. Use at your own risk.**
+
+---
 
 ## Introduction
 
@@ -100,11 +106,3 @@ This allows you to restore the backup with the `mongorestore` command:
   * `oplog-<start>-<end>.bson` - The oplog from the start timestamp until the end timestamp (inclusive).
 
 Each time a full backup is performed, a new backup folder is created.
-
-## Contributing
-
-1. Fork it ( http://github.com/journeyapps/mongo-oplog-backup/fork )
-2. Create your feature branch (`git checkout -b my-new-feature`)
-3. Commit your changes (`git commit -am 'Add some feature'`)
-4. Push to the branch (`git push origin my-new-feature`)
-5. Create new Pull Request
