@@ -38,7 +38,7 @@ module MongoOplogBackup
       start_at = options[:start] || BSON::Timestamp.from_json(backup_state['position'])
       raise ArgumentError, ":start is required" unless start_at
 
-      query = ['--query', "{ts : { $gte : { $timestamp : { t : #{start_at.seconds}, i : #{start_at.increment} } } }}"]
+      query = ['--query', "{\"ts\" : { \"$gte\" : { \"$timestamp\" : { \"t\" : #{start_at.seconds}, \"i\" : #{start_at.increment} } } }}"]
 
       dump_args = ['--out', config.oplog_dump_folder, '--db', 'local', '--collection', 'oplog.rs']
       dump_args += query
